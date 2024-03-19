@@ -1,0 +1,34 @@
+#include "./common_message.fc";
+
+
+;;"op:deployMaster"c = 0xbbb9075c
+int op::deployMaster()  asm "0xbbb9075c PUSHINT";
+
+int load_DeployMasterMsg(slice in_msg_body){
+    int query_id = in_msg_body~load_uint(64);
+    return query_id;
+}
+
+
+;;"op:mint"c = 0x227d62e9
+int op::mint() asm "0x227d62e9 PUSHINT"; 
+
+(int, slice, int) load_MintMsg(slice in_msg_body){
+    int query_id = in_msg_body~load_uint(64);
+    slice to_address = in_msg_body~load_msg_addr();
+    int jetton_amount = in_msg_body~load_coins();
+    return ( query_id, to_address, jetton_amount);  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

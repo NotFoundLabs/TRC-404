@@ -1,0 +1,46 @@
+int bounce::true() asm "0x18 PUSHINT"; ;;if occur error,messagg will return to sender
+int bounce::false() asm "0x10 PUSHINT"; ;;even occur error,messagg will not return to sender
+
+int sendMode::CARRY_ALL_REMAINING_BALANCE()  asm "128 PUSHINT";  ;;beside msg_value of message defined, carry all left contract balance
+int sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE()  asm "64 PUSHINT"; ;;beside msg_value of message defined, carry all left  msg_value of income message
+int sendMode::DESTROY_ACCOUNT_IF_ZERO()  asm "32 PUSHINT";
+int sendMode::PAY_GAS_SEPARATELY()  asm "1 PUSHINT"; ;; spend msg_value and receiver contract balance as gas fee
+int sendMode::IGNORE_ERRORS()  asm "2 PUSHINT"; 
+int sendMode::NONE()  asm "0 PUSHINT";  ;; just spend msg_value as gas fee
+
+
+() sendMsg(int bounce,int sendMode,slice to_address,int msg_value,cell msg_body) impure inline {
+    cell msg = begin_cell()
+                .store_uint(bounce, 6) ;; we should not bounce here cause receiver can have uninitialized contract
+                .store_slice(to_address)
+                .store_coins(msg_value)
+                .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1) 
+                .store_ref(msg_body)
+                .end_cell();
+      send_raw_message(msg, sendMode);
+}
+
+
+() sendMsgWithInitState(int bounce,int sendMode,slice to_address,int msg_value,cell msg_body,cell state_init) impure inline {
+     cell msg = begin_cell()
+                .store_uint(bounce, 6) ;; we should not bounce here cause receiver can have uninitialized contract
+                .store_slice(to_address)
+                .store_coins(msg_value)
+                .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+                .store_ref(state_init)
+                .store_ref(msg_body)
+                .end_cell();
+      send_raw_message(msg, sendMode);
+}
+
+;; if you want to send Unserialized messages,just use  send_raw_message from stdlib.fc
+;; like this :
+;;  cell msg = begin_cell()
+;;       .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 010000
+;;       .store_slice(to_address)
+;;       .store_coins(0)
+;;       .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)  ;;notice, this place use 0 
+;;       .store_uint(op::excesses(), 32)  ;;notice  this is the content of Unserialized messages
+;;       .store_uint(query_id, 64)        ;;notice, this is the content of Unserialized messages
+;;       .end_cell();
+;;       send_raw_message(msg, 64); ;; send remain

@@ -1,0 +1,145 @@
+;;#include "../utils/stdlib.fc";
+;;(6 messages: excesses,transfer,transfer_notification,internal_transfer,burn,burn_notification,
+;;             transfer_nft,internal_transfer_nft)
+;; excesses  message defines in common_message.fc
+;; reference: https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md
+
+
+;;transfer query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
+        ;;    response_destination:MsgAddress custom_payload:(Maybe ^Cell)
+        ;;    forward_ton_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
+        ;;    = InternalMsgBody;
+int op::transfer() asm "0x0f8a7ea5 PUSHINT";
+
+cell transferMsg(int query_id,int amount,slice destination,slice response_destination
+                        ,cell custom_payload,int forward_ton_amount, slice forward_payload
+                        ){
+     return   begin_cell().store_uint(op::transfer(), 32)
+                         .store_uint(query_id, 64)
+                         .store_coins(amount)
+                         .store_slice(destination)
+                         .store_slice(response_destination)
+                         .store_ref(custom_payload)
+                         .store_coins(forward_ton_amount)
+                         .store_slice(forward_payload)
+                         .end_cell();        
+}
+
+(int, int, slice, slice, cell, int, slice
+) load_transferMsg(slice in_msg_body){
+    int query_id = in_msg_body~load_uint(64);
+    int amount = in_msg_body~load_coins();
+    slice destination = in_msg_body~load_msg_addr();
+    slice response_destination = in_msg_body~load_msg_addr();
+    cell custom_payload = in_msg_body~load_dict();
+    int forward_ton_amount = in_msg_body~load_coins();
+    slice forward_payload = in_msg_body;
+ return ( query_id, amount, destination, response_destination,custom_payload, forward_ton_amount, forward_payload
+          );    
+}
+
+;; transfer_notification query_id:uint64 amount:(VarUInteger 16)
+;;            sender:MsgAddress forward_payload:(Either Cell ^Cell)
+;;            = InternalMsgBody;
+int op::transfer_notification() asm "0x7362d09c PUSHINT";
+
+cell transferNotificationMsg(int query_id,int amount,slice sender, slice forward_payload){
+     return   begin_cell().store_uint(op::transfer_notification(), 32)
+                         .store_uint(query_id, 64)
+                         .store_coins(amount)
+                         .store_slice(sender)
+                         .store_slice(forward_payload)
+                         .end_cell();        
+}
+
+;; internal_transfer    query_id:uint64 
+;;                      amount:(VarUInteger 16)
+;;                      from:MsgAddress
+;;                      response_address:MsgAddress
+;;                      forward_ton_amount:(VarUInteger 16)
+;;                      forward_payload:(Either Cell ^Cell)
+;;                      = InternalMsgBody;
+int op::internal_transfer() asm "0x178d4519 PUSHINT";
+
+cell internalTransferMsg(int query_id,int amount,slice from,slice response_destination,
+                              int forward_ton_amount, slice forward_payload ){
+     return   begin_cell().store_uint(op::internal_transfer(), 32)
+                         .store_uint(query_id, 64)
+                         .store_coins(amount)
+                         .store_slice(from)
+                         .store_slice(response_destination)
+                         .store_coins(forward_ton_amount)
+                         .store_slice(forward_payload)
+                         .end_cell();        
+}
+
+(int, int, slice, slice,int, slice) load_internalTransferMsg(slice in_msg_body){
+      int query_id = in_msg_body~load_uint(64);
+      int amount = in_msg_body~load_coins();
+      slice from = in_msg_body~load_msg_addr();
+      slice response_address = in_msg_body~load_msg_addr();
+      int forward_ton_amount = in_msg_body~load_coins();
+      slice forward_payload = in_msg_body;
+ return (query_id, amount, from, response_address, forward_ton_amount, forward_payload
+        );    
+}
+
+
+;;"op::add_nft_list"c = 0x5ded7a8d
+int op::add_nft_list() asm "0x5ded7a8d PUSHINT";  
+
+cell addNftListMsg(int query_id,int begin_index,int new_nft_number,slice response_destination){
+     return   begin_cell().store_uint(op::add_nft_list(), 32)
+                         .store_uint(query_id, 64)
+                         .store_uint(begin_index, 64)
+                         .store_uint(new_nft_number, 64) 
+                         .store_slice(response_destination)
+                         .end_cell();        
+}
+
+(int,int,int,slice) load_addNftListMsg(slice in_msg_body){
+    int query_id = in_msg_body~load_uint(64);
+    int begin_index = in_msg_body~load_uint(64);
+    int new_nft_number = in_msg_body~load_uint(64);
+    slice response_destination = in_msg_body~load_msg_addr();
+ return (query_id, begin_index,new_nft_number, response_destination);    
+}
+
+
+;;"op::add_one_ft_and_nft"c = 0x8a7827a7
+int op::add_one_ft_and_nft() asm "0x8a7827a7 PUSHINT";  
+
+cell addOneFtAndNftMsg(int query_id,int item_index,slice response_destination){
+     return   begin_cell().store_uint(op::add_one_ft_and_nft(), 32)
+                         .store_uint(query_id, 64)
+                         .store_uint(item_index, 64)
+                         .store_slice(response_destination)
+                         .end_cell();        
+}
+
+(int,int,slice) load_addOneFtAndNftMsg(slice in_msg_body){
+    int query_id = in_msg_body~load_uint(64);
+    int item_index = in_msg_body~load_uint(64);
+    slice response_destination = in_msg_body~load_msg_addr();
+ return (query_id, item_index,  response_destination);    
+}
+
+;;"op::reduce_one_ft_and_nft"c = 0x6f8c0042
+int op::reduce_one_ft_and_nft() asm "0x6f8c0042 PUSHINT";  
+
+cell reduceOneFtAndNftMsg(int query_id,int item_index,slice response_destination){
+     return   begin_cell().store_uint(op::reduce_one_ft_and_nft(), 32)
+                         .store_uint(query_id, 64)
+                         .store_uint(item_index, 64)
+                         .store_slice(response_destination)
+                         .end_cell();        
+}
+
+(int,int,slice) load_reduceOneFtAndNftMsg(slice in_msg_body){
+    int query_id = in_msg_body~load_uint(64);
+    int item_index = in_msg_body~load_uint(64);
+    slice response_destination = in_msg_body~load_msg_addr();
+ return (query_id, item_index, response_destination);    
+}
+
+

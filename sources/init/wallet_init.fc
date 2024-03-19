@@ -1,0 +1,29 @@
+#include "../utils/chain.fc";
+
+(cell, slice ) getJettonWallet_InitStateAndAddress( slice owner_address, 
+                                                   slice jetton_master_address, cell jetton_wallet_code,
+                                                   slice nft_collection_address) inline {
+        cell pack_data = begin_cell()
+            .store_coins(0)
+            .store_slice(owner_address)
+            .store_slice(jetton_master_address)
+            .store_ref(jetton_wallet_code)
+            .store_slice(nft_collection_address)
+            .store_dict(new_dict()) ;;owned_nft_list
+            .store_uint(0,64)  ;;owned_nft_number
+            .end_cell();
+        
+        cell state_init = begin_cell()
+          .store_uint(0, 2)
+          .store_dict(jetton_wallet_code)
+          .store_dict(pack_data)
+          .store_uint(0, 1)
+          .end_cell();
+        
+        slice address = begin_cell().store_uint(4, 3)
+                     .store_int(workchain(), 8)
+                     .store_uint(cell_hash(state_init), 256)
+                     .end_cell().begin_parse();
+        
+        return (state_init, address );
+}

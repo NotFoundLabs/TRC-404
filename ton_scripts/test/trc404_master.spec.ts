@@ -1,0 +1,76 @@
+import { owned_nft_limit } from "../contract/compileContract";
+import "@ton/test-utils";
+import { toNano } from "@ton/core";
+import { Trc404Master } from "./warpper/Trc404Master";
+import { Trc404NftCollection } from "./warpper/Trc404NftCollection";
+import { deployAndCheckCollectionAndMasterContract,checkMintFt } from "../utils/check";
+
+import {
+    Blockchain,
+    SandboxContract,
+    TreasuryContract,
+} from "@ton/sandbox";
+
+import {buildMintFtMsg} from "../message/masterMsg";
+
+
+describe('Test Trc404 Master admin Mint ', () => {
+    let blockchain: Blockchain;
+    let deployer: SandboxContract<TreasuryContract>;
+    let Collection: SandboxContract<Trc404NftCollection>;
+    let Master: SandboxContract<Trc404Master>;
+
+    
+    beforeAll(async () => {
+        blockchain = await Blockchain.create();
+        deployer = await blockchain.treasury("deployer");
+        let res=await deployAndCheckCollectionAndMasterContract(blockchain,deployer);
+        Master=res.Master;
+        Collection=res.Collection;
+    });
+    
+     //**** Should be error cases  */
+    it('should not mint FT when sender is not admin', async () => {
+        let mintAmount =1;
+        let gasFee = 0.15; //0.15 ton   gas_fee nees 0.15 ~  0.1 * owned_nft_limit/toNano("1") 
+        let user1 = await blockchain.treasury("user1");
+        let userAddress=user1.address;
+        let msg = buildMintFtMsg(userAddress,mintAmount) ;
+        const mintFfResult = await Master.send(user1.getSender(), { value: toNano(gasFee) },msg);  
+        expect(mintFfResult.transactions).toHaveTransaction({
+            from: user1.address,
+            to: Master.address,
+            success: false,
+        });
+    })
+     //**** Should be correct cases  */
+    it('should mint 1 FT and 1 NFT', async () => {
+        let mintAmount =1;
+        let gasFee = 0.15; //0.15 ton   gas_fee nees 0.15 ~  0.1 * owned_nft_limit/toNano("1") 
+        let user1 = await blockchain.treasury("user1");
+        let userAddress=user1.address;
+        let nft_item_index =1n;
+        let msg = buildMintFtMsg(userAddress,mintAmount) ;
+        await checkMintFt(mintAmount,gasFee,deployer,blockchain,Master,Collection,userAddress,nft_item_index,msg);
+    })
+
+    it('should mint 1.5 FT and 1 NFT', async () => {
+        let mintAmount =1.5;
+        let gasFee = 0.15; //0.15 ton   gas_fee nees 0.15 ~  0.1 * owned_nft_limit/toNano("1") 
+        let user2 = await blockchain.treasury("user2");
+        let userAddress=user2.address;
+        let nft_item_index =2n;
+        let msg = buildMintFtMsg(userAddress,mintAmount) ;
+        await checkMintFt(mintAmount,gasFee,deployer,blockchain,Master,Collection,userAddress,nft_item_index,msg);
+    })
+
+    it('should mint 10000 FT and '+owned_nft_limit+' NFT', async () => {
+        let mintAmount =10000;
+        let gasFee = 0.1 * owned_nft_limit; //0.15 ton   gas_fee nees 0.15 ~  0.1 * owned_nft_limit/toNano("1") 
+        let user3 = await blockchain.treasury("user3");
+        let userAddress=user3.address;
+        let nft_item_index =3n;
+        let msg = buildMintFtMsg(userAddress,mintAmount) ;
+        await checkMintFt(mintAmount,gasFee,deployer,blockchain,Master,Collection,userAddress,nft_item_index,msg);
+    })
+})

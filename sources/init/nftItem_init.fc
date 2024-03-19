@@ -1,0 +1,20 @@
+
+#include "../utils/chain.fc";
+
+(cell, slice ) getNftItem_InitStateAndAddress(int item_index,slice collection_address,cell nft_item_code){
+    cell data = begin_cell()
+              .store_uint(item_index,64)
+              .store_slice(collection_address)
+              .end_cell();
+    cell state_init = begin_cell().store_uint(0, 2)
+                    .store_dict(nft_item_code)
+                    .store_dict(data)
+                    .store_uint(0, 1).end_cell();
+    slice address = begin_cell().store_uint(4, 3)
+                     .store_int(workchain(), 8)
+                     .store_uint(cell_hash(state_init), 256)
+                     .end_cell()
+                     .begin_parse();
+    return (state_init, address);
+
+}
