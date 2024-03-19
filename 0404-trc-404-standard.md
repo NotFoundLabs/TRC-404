@@ -9,13 +9,13 @@
 
 # Summary
 
-A semi-fungible token(SFT) standard that combines the [Jetton](https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md) and [NFT](https://github.com/ton-blockchain/TEPs/blob/master/text/0062-nft-standard.md) standards with native liquidity and fractionalization, as well as full compatibility.
+A semi-fungible token(SFT) standard that combines the [Jetton](https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md) and [NFT](https://github.com/ton-blockchain/TEPs/blob/master/text/0062-nft-standard.md) standards with native liquidity and fractionalization, as well as full compatibility.This protocol is inspired by [ERC404]((https://github.com/Pandora-Labs-Org/erc404)), so we also refer to this standard as TRC404 protocol.
 
 # Motivation
 
 This protocol can increase the liquidity of NFT transactions, achieve fragmentation of NFTs, and facilitate the exchange between different NFTs.  
 
-SFT standard describes:
+TEP404 standard describes:
 
 * The way of SFT jetton transfers.
 * The way of SFT NFT transfers.

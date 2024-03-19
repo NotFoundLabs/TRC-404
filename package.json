@@ -5,6 +5,7 @@
   "author": "KojhLiang <kojhliang@gmail.com>",
   "license": "MIT",
   "scripts": {
+    "build": "ts-node ./ton_scripts/contract.build.ts",
     "test": "jest",
     "start": "ts-node ./ton_scripts/contract.main.ts"
   },
