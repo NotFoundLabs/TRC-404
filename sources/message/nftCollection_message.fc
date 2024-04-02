@@ -1,12 +1,10 @@
 
-#include "../utils/stdlib.fc";
-;;"op:initCollection"c = 0x75422543
 int op::initCollection()  asm "0x75422543 PUSHINT";
 
 (int,slice,slice )  load_InitCollectionMsg(slice in_msg_body){
     int query_id = in_msg_body~load_uint(64);
-    slice master_address = in_msg_body~load_msg_addr(); ;; trc404 master contract
-    slice response_address = in_msg_body~load_msg_addr(); ;; response_address,will send excess msg to this address
+    slice master_address = in_msg_body~load_msg_addr(); 
+    slice response_address = in_msg_body~load_msg_addr(); 
     return (query_id,master_address,response_address);
 }
 
@@ -17,57 +15,47 @@ cell initCollectionMsg(int query_id,slice master_address,slice response_address 
                         .store_slice(response_address)
                         .end_cell();
 }
-
-;;"add_nft_supply query_id:uint64 current_nft_balance:uint64 new_nft_number:uint64 owner_address_of_sender_trc404_wallet:MsgAddress response_destination:MsgAddress = InternalMsgBody"c = 0xf1d2a5a3
-;;0xf1d2a5a3 & 0x7fffffff = 0x71d2a5a3 ;
-int op::add_nft_supply() asm "0x71d2a5a3 PUSHINT";
+int op::add_nft_supply() asm "0xdd9911fa PUSHINT";
 
 (int,int,int,slice,slice ) load_AddNftSupplyMsg(slice in_msg_body){
     int query_id = in_msg_body~load_uint(64);
-    int current_nft_balance = in_msg_body~load_uint(64);
     int new_nft_number = in_msg_body~load_uint(64);
-    slice owner_address_of_sender_trc404_wallet = in_msg_body~load_msg_addr();
+    int need_to_add_nft_balance = in_msg_body~load_coins();
+    slice owner_address = in_msg_body~load_msg_addr(); 
     slice response_address = in_msg_body~load_msg_addr();
-    return ( query_id,current_nft_balance, new_nft_number, owner_address_of_sender_trc404_wallet,response_address);  
+    return ( query_id,new_nft_number,need_to_add_nft_balance,owner_address,response_address);  
 }
 
-cell addNftSupplyMsg( int query_id,int current_nft_balance,int new_nft_number,slice owner_address_of_sender_trc404_wallet,slice response_address){
+cell addNftSupplyMsg( int query_id,int new_nft_number,int need_to_add_nft_balance,slice owner_address,slice response_address){
      return   begin_cell().store_uint(op::add_nft_supply(), 32)
                             .store_uint(query_id, 64)
-                            .store_uint(current_nft_balance, 64)
                             .store_uint(new_nft_number, 64)
-                            .store_slice(owner_address_of_sender_trc404_wallet)
+                            .store_coins(need_to_add_nft_balance)                           
+                            .store_slice(owner_address)
                             .store_slice(response_address)
                             .end_cell();        
 }
 
+int op::reduce_nft_supply() asm "0x4bd28668 PUSHINT";
 
-;;"reduce_one_nft query_id:uint64 item_index:uint64 owner_address_of_sender_trc404_wallet:MsgAddress response_destination:MsgAddress = InternalMsgBody"c = 0xc0d7c55d
-;; 0xc0d7c55d & 0x7fffffff = 0x40d7c55d
-int op::reduce_one_nft() asm "0x40d7c55d PUSHINT";
-
-(int,int,slice,slice ) load_ReduceOneNftMsg(slice in_msg_body){
+(int,int,slice,slice) load_ReduceNftSupplyMsg(slice in_msg_body){
     int query_id = in_msg_body~load_uint(64);
-    int item_index = in_msg_body~load_uint(64);
-    slice owner_address_of_sender_trc404_wallet = in_msg_body~load_msg_addr();
+    int burn_item_index = in_msg_body~load_uint(64);
+    slice owner_address = in_msg_body~load_msg_addr(); 
     slice response_address = in_msg_body~load_msg_addr();
-    return ( query_id, item_index, owner_address_of_sender_trc404_wallet,response_address);  
+    return ( query_id, burn_item_index,owner_address,response_address);  
 }
 
-cell reduceOneNftMsg( int query_id,int item_index,
-                    slice owner_address_of_sender_trc404_wallet,slice response_address){
-     return   begin_cell().store_uint(op::reduce_one_nft(), 32)
+cell reduceNftSupplyMsg( int query_id,int burn_item_index,slice owner_address,slice response_address){
+     return   begin_cell().store_uint(op::reduce_nft_supply(), 32)
                             .store_uint(query_id, 64)
-                            .store_uint(item_index, 64)
-                            .store_slice(owner_address_of_sender_trc404_wallet)
+                            .store_uint(burn_item_index,64)
+                            .store_slice(owner_address)
                             .store_slice(response_address)
                             .end_cell();        
 }
 
-
-;;"reduce_one_nft query_id:uint64 item_index:uint64 from:MsgAddress to:MsgAddress  response_destination:MsgAddress = InternalMsgBody"c = 0xc476fc05
-;; 0xc476fc05 & 0x7fffffff = 0x4476fc05
-int op::request_transfer_one_ft_and_nft() asm "0x4476fc05 PUSHINT";   
+int op::request_transfer_one_ft_and_nft() asm "0xa243c000 PUSHINT";   
 
 cell requestTransferOneFtAndNftMsg(int query_id,int item_index,slice from_addess,slice to_address,slice response_address){
 
@@ -82,14 +70,13 @@ cell requestTransferOneFtAndNftMsg(int query_id,int item_index,slice from_addess
 
 (int,int,slice,slice,slice) load_RequestTransferOneFtAndNftMsg(slice in_msg_body){
     int query_id = in_msg_body~load_uint(64);
-    int item_index = in_msg_body~load_uint(64);          ;;nft item_index
-    slice from_addess = in_msg_body~load_msg_addr();          ;;sender's client wallet 
-    slice to_address = in_msg_body~load_msg_addr();                ;;receiver's client wallet  
+    int item_index = in_msg_body~load_uint(64);         
+    slice from_addess = in_msg_body~load_msg_addr();         
+    slice to_address = in_msg_body~load_msg_addr();              
     slice response_address = in_msg_body~load_msg_addr();
  return (query_id, item_index, from_addess, to_address, response_address);    
 }
 
-;;"op::change_royalty_params"c = 0xe90af271
 int op::change_royalty_params() asm "0xe90af271 PUSHINT";
 
 (int,cell) load_ChangeRoyaltyParamsMsg(slice in_msg_body){
@@ -97,7 +84,6 @@ int op::change_royalty_params() asm "0xe90af271 PUSHINT";
     cell royalty_params =  in_msg_body~load_ref();
     return (query_id,royalty_params);
 }
-
 
 int op::get_royalty_params() asm "0x693d3950 PUSHINT";
 

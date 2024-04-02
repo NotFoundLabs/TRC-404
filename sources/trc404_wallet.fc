@@ -1,225 +1,316 @@
-;;Trc404 Jetton wallet Contract
 #include "./utils/stdlib.fc";
+#include "./utils/string.fc";
+#include "./utils/const.fc";
 #include "./utils/sendMessage.fc";
 #include "./message/common_message.fc";
+#include "./message/master_message.fc";
 #include "./message/wallet_message.fc";
 #include "./message/nftCollection_message.fc";
 #include "./init/wallet_init.fc";
-#include "./utils/string.fc";
+#include "./init/nftItem_init.fc";
 
 
-int min_storageFee() asm "1000000 PUSHINT"; 
-int min_unit() asm   "1000000000 PUSHINT"; 
-
-;;for op::transfer()
-int basice_transfer_ft_gas_consumption() asm "15000000 PUSHINT"; 
-int transfer_one_ft_gas()                 asm "2800000 PUSHINT"; 
-
-;;for op::internal_transfer()
-int receive_ft_gas_consumption() asm "19500000 PUSHINT"; 
-int notifyTokenFee() asm       "3000000 PUSHINT";  
-
-;;Action Chain fee
-int reduce_one_nft_action_fee() asm   "30000000 PUSHINT"; 
+int min_storageFee()   asm "1000000 PUSHINT";
+int min_unit()      asm "1000000000 PUSHINT"; ;; 1 FT
+int basice_transfer_ft_gas_consumption() asm "18000000 PUSHINT";
+int transfer_one_ft_gas()                 asm "5000000 PUSHINT";
+int reduce_nft_supply_fee()              asm "38000000 PUSHINT";
+int transfer_nft_burn_nft_fee()          asm "38000000 PUSHINT";
+int add_one_ft_and_nft_gas()             asm "17600000 PUSHINT";
+int receive_ft_gas_consumption()       asm "2000000 PUSHINT";
+int need_add_nft_supply_action_fee()      asm "15300000 PUSHINT";
+int no_need_add_nft_supply_action_fee()   asm "14800000 PUSHINT";
 
 
-(int, slice, slice, cell,slice,cell,int) load_data() inline {
-  slice ds = get_data().begin_parse();
-  return (   ds~load_coins(),      ;; jetton_balance
-            ds~load_msg_addr(),    ;; owner_address
-            ds~load_msg_addr(),    ;;jetton_master_address
-            ds~load_ref(),        ;; jetton_wallet_code
-            ds~load_msg_addr(),   ;;nft_collection_address
-            ds~load_dict(),        ;;owned_nft_dict
-            ds~load_uint(64)         ;;owned_nft_number
-            );
+
+global int   Storage::Jetton_balance;
+global slice Storage::Owner_address;
+global slice Storage::Jetton_master_address;
+global cell  Storage::Jetton_wallet_code;
+global cell  Storage::Nft_item_code;
+global slice Storage::Nft_collection_address;
+global cell  Storage::Owned_nft_dict;
+global int   Storage::Owned_nft_number;
+global int   Storage::Owned_nft_limit;
+global int   Storage::Pending_reduce_jetton_balance;
+global cell  Storage::Pending_burn_nft_queue;
+
+() load_data() impure inline {
+    slice ds = get_data().begin_parse();
+    Storage::Jetton_balance = ds~load_coins();                         ;; jetton_balance
+    Storage::Owner_address = ds~load_msg_addr();                      ;; owner_address
+    Storage::Jetton_master_address = ds~load_msg_addr();                      ;;jetton_master_address
+    Storage::Jetton_wallet_code = ds~load_ref();                           ;; jetton_wallet_code
+    Storage::Nft_item_code = ds~load_ref();                           ;; nft_item_code
+    Storage::Nft_collection_address = ds~load_msg_addr();                      ;;nft_collection_address
+    Storage::Owned_nft_dict = ds~load_dict();                          ;;owned_nft_dict
+    Storage::Owned_nft_number = ds~load_int(item_index_length() + 1);    ;;owned_nft_number，allow negative number, for the case: A transfer B 1NFT,B trasfer C 1 NFT
+    Storage::Owned_nft_limit = ds~load_uint(item_index_length());       ;;owned_nft_limit
+    Storage::Pending_reduce_jetton_balance = ds~load_coins();                     ;; Pending_reduce_jetton_balance
+    Storage::Pending_burn_nft_queue = ds~load_dict();                             ;; Pending_burn_nft_queue
+
 }
 
-() save_data (int jetton_balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code,
-  slice nft_collection_address,cell owned_nft_dict,int owned_nft_number) impure inline {
-  set_data(begin_cell()
-            .store_coins(jetton_balance)
-            .store_slice(owner_address)
-            .store_slice(jetton_master_address)
-            .store_ref(jetton_wallet_code)
-            .store_slice(nft_collection_address)
-            .store_dict(owned_nft_dict)
-            .store_uint(owned_nft_number,64)
-           .end_cell());
+() save_data() impure inline {
+    set_data(begin_cell()
+        .store_coins(Storage::Jetton_balance)
+        .store_slice(Storage::Owner_address)
+        .store_slice(Storage::Jetton_master_address)
+        .store_ref(Storage::Jetton_wallet_code)
+        .store_ref(Storage::Nft_item_code)
+        .store_slice(Storage::Nft_collection_address)
+        .store_dict(Storage::Owned_nft_dict)
+        .store_int(Storage::Owned_nft_number, item_index_length() + 1)
+        .store_uint(Storage::Owned_nft_limit, item_index_length())
+        .store_coins(Storage::Pending_reduce_jetton_balance)
+        .store_dict(Storage::Pending_burn_nft_queue)
+        .end_cell());
 }
 
+() core_internal_transfer(int msg_value, int query_id, int jetton_amount, slice from_address, slice response_address, int forward_ton_amount, slice forward_payload) impure inline_ref {
+    var old_jetton_balance = Storage::Jetton_balance;
+    int old_nft_balance = old_jetton_balance / min_unit();
+    int new_jetton_balance = Storage::Jetton_balance + jetton_amount;
+    int new_nft_balance = new_jetton_balance / min_unit();
+    int need_to_add_nft_number = new_nft_balance - old_nft_balance;
+
+    ;;calculate the real new_nft_number according current_nft_balance and owned_nft_limit
+    if (Storage::Owned_nft_number >= Storage::Owned_nft_limit) {
+        need_to_add_nft_number = 0;
+    } else {
+        if ((Storage::Owned_nft_number + need_to_add_nft_number) >= Storage::Owned_nft_limit) {
+            need_to_add_nft_number = Storage::Owned_nft_limit - Storage::Owned_nft_number;
+        }
+    }
+
+    ;;add the jetton balance that no need to mint NFT first
+    int need_to_add_nft_balance = 0;
+    if (need_to_add_nft_number <= 0) {
+        Storage::Jetton_balance = new_jetton_balance;
+    } else {
+        int new_real_nft_balance = (old_nft_balance + need_to_add_nft_number) * min_unit();
+        need_to_add_nft_balance = new_real_nft_balance - old_jetton_balance;
+        Storage::Jetton_balance = new_jetton_balance - need_to_add_nft_balance;
+    }
+
+    throw_unless(710, Storage::Jetton_balance >= 0);
+
+    if (forward_ton_amount > 0) {
+        msg_value -= forward_ton_amount;
+        sendMsg(bounce::false(), sendMode::PAY_GAS_SEPARATELY(), Storage::Owner_address, forward_ton_amount, transferNotificationMsg(query_id, jetton_amount, from_address, forward_payload));
+    }
+
+    ;;try to execute add jetton balance that need to mint NFT,only after minted one NFT can add  FT
+    if (need_to_add_nft_number > 0) {
+        int counter = 0;
+        msg_value = msg_value - need_add_nft_supply_action_fee();
+        sendMsg(bounce::true(), sendMode::NONE(), Storage::Nft_collection_address, msg_value, addNftSupplyMsg(query_id, need_to_add_nft_number, need_to_add_nft_balance, Storage::Owner_address, response_address));
+    } else {
+        msg_value = msg_value - no_need_add_nft_supply_action_fee();
+        sendMsg(bounce::false(), sendMode::NONE(), response_address, msg_value, excessesMsg(query_id));
+    }
+
+    save_data();
+}
+
+() updateOwnedNftNumberAndJettonBalance(int msg_value, int reduce_and_add_amount, slice to_address, int query_id, int item_index, slice response_address) impure inline_ref {
+    Storage::Owned_nft_number = Storage::Owned_nft_number - 1;
+    ;;try to reduce jetton_balance, if result is negative , add Pending_reduce_jetton_balance by 1 
+    int result = Storage::Jetton_balance - reduce_and_add_amount;
+    if (result < 0) {
+        Storage::Pending_reduce_jetton_balance = Storage::Pending_reduce_jetton_balance + 1;
+    } else {
+        Storage::Jetton_balance = Storage::Jetton_balance - reduce_and_add_amount;
+    }
+
+    var (state_init, receiver_trc404_wallet) = getJettonWallet_InitStateAndAddress(to_address, Storage::Jetton_master_address, Storage::Jetton_wallet_code, Storage::Nft_item_code, Storage::Nft_collection_address);
+    sendMsgWithInitState(bounce::true(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(), receiver_trc404_wallet, 0, addOneFtAndNftMsg(query_id, item_index, reduce_and_add_amount, Storage::Owner_address, response_address), state_init);
+    save_data();
+}
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
-  if (in_msg_body.slice_empty?()) { ;; ignore empty messages
-    return ();
-  }
-  var (flags,sender_address,fwd_fee) = load_in_msg_full(in_msg_full);
-  if (flags & 1) {
-    return ();
-  }
-  int op = in_msg_body~load_uint(32);
-
-  ;;********begin to handle message
-  (int jetton_balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code, slice nft_collection_address, cell owned_nft_dict, int owned_nft_number) = load_data();
-  
-   ;;Reserve necessary storage costs
-   msg_value =  my_balance -  min_storageFee();
-
-  if (op == op::transfer()) { ;; outgoing transfer
-    var (query_id, jetton_amount, to_address, response_address ,custom_payload, forward_ton_amount, forward_payload) = load_transferMsg(in_msg_body);
-    
-     var new_jetton_balance = jetton_balance - jetton_amount;
-     throw_unless(705, equal_slices(owner_address, sender_address) |  equal_slices(nft_collection_address, sender_address));
-     throw_unless(706, new_jetton_balance >= 0);
-
-      ;;check if need burn nft 
-      int old_nft_balance = jetton_balance / min_unit();
-      int new_nft_balance = new_jetton_balance / min_unit();
-
-      int need_to_burn_nft_number = 0;
-       if( owned_nft_number > new_nft_balance){
-          need_to_burn_nft_number =  owned_nft_number - new_nft_balance;
-          owned_nft_number = new_nft_balance;
-       }
- 
-      int total_transfer_ft_gas = basice_transfer_ft_gas_consumption() + (transfer_one_ft_gas() * need_to_burn_nft_number);
-      int remain_gas_fee = msg_value - total_transfer_ft_gas ; ;; decrease for contract computation gas 
-
-      throw_unless(37, remain_gas_fee > (reduce_one_nft_action_fee() * need_to_burn_nft_number));
-      remain_gas_fee = remain_gas_fee - (reduce_one_nft_action_fee() * need_to_burn_nft_number);   ;; decrease for sending message action  fee
-  
-      if ( need_to_burn_nft_number > 0 ){
-        ;; send reduceOneNft  message to trc404 collection contract address
-        repeat( need_to_burn_nft_number ){
-          ;; Start burning nft from the smallest item_index     
-          (int item_index, slice value, int flag) = owned_nft_dict~udict::delete_get_min(64);
-          throw_unless(500, flag);  ;; if can not delete this nft item address, throw error
-          
-          ;;nft_balance -= 1; 
-          sendMsg(bounce::true(),sendMode::NONE(),
-                nft_collection_address,reduce_one_nft_action_fee(),
-                reduceOneNftMsg(query_id,item_index,owner_address,response_address));
-        }      
-      } 
-
-
-     ;; send internalTransfer message to reciver's trc404 wallet contract address,must use sendMsgWithStateInit,because reciver may hasn't initilized  trc404 wallet cotract
-     var (state_init, to_trc404_wallet_address) = getJettonWallet_InitStateAndAddress(to_address, jetton_master_address, jetton_wallet_code, nft_collection_address);
-    
-     sendMsgWithInitState(bounce::true(),sendMode::NONE(),
-            to_trc404_wallet_address,remain_gas_fee,
-            internalTransferMsg(query_id, jetton_amount, owner_address, response_address, 0, ""),
-            state_init);
-
-    save_data(new_jetton_balance, owner_address, jetton_master_address, jetton_wallet_code, nft_collection_address, owned_nft_dict, owned_nft_number);
-    return ();
-  }
-
-  if (op == op::internal_transfer()) { ;; incoming transfer 
-    var (query_id, jetton_amount, from_address, response_address, forward_ton_amount, forward_payload) = load_internalTransferMsg(in_msg_body);
-
-    ;; check message if from master contract or other wallet contract
-    var (_, from_wallet_address) = getJettonWallet_InitStateAndAddress(from_address, jetton_master_address, jetton_wallet_code, nft_collection_address);
-    throw_unless(707, equal_slices(jetton_master_address, sender_address) | equal_slices(from_wallet_address, sender_address));
-
-    ;;calculate the nft balance need to add 
-    int old_nft_balance = jetton_balance / min_unit();
-    jetton_balance += jetton_amount;    
-    int new_nft_balance = jetton_balance / min_unit();
-    int need_to_add_nft_balance = new_nft_balance - old_nft_balance;
-
-    slice receiveFtComment = begin_cell().store_slice("Received ").store_slice(int_to_string(jetton_amount))
-                                        .store_slice(" nano TRC404 Token")                                       
-                                        .end_cell().begin_parse();  
-    sendMsg(bounce::false(),sendMode::NONE(),
-            owner_address,notifyTokenFee(),
-            commentMsg(receiveFtComment));
-    
-    msg_value = msg_value - receive_ft_gas_consumption() - notifyTokenFee();
-
-    if (need_to_add_nft_balance > 0) {
-       sendMsg(bounce::true(),sendMode::NONE(),
-               nft_collection_address,msg_value,
-               addNftSupplyMsg(query_id,owned_nft_number,need_to_add_nft_balance,owner_address,response_address));   
-    } else {
-      sendMsg(bounce::false(),sendMode::NONE(),
-              response_address,msg_value,
-              excessesMsg(query_id));
+    if (in_msg_body.slice_empty?()) {
+        ;; ignore empty messages
+        return ();
     }
-     
-    save_data(jetton_balance, owner_address, jetton_master_address, jetton_wallet_code,nft_collection_address,owned_nft_dict,owned_nft_number);
-    return ();
-  }
+    var (flags, sender_address, fwd_fee) = load_in_msg_full(in_msg_full);
+    if (flags & 1) {
+        return ();
+    }
+    int op = in_msg_body~load_uint(32);
 
-  if (op == op::add_nft_list()) {
-     var (query_id, begin_index,new_nft_number, response_destination) = load_addNftListMsg(in_msg_body);
+    ;;********begin to handle message
+    load_data();
+    msg_value = msg_value - min_storageFee();
 
-     throw_unless(708, equal_slices(nft_collection_address, sender_address));
+    if (op == op::transfer()) {
+        ;; outgoing transfer
+        var (query_id, jetton_amount, to_address, response_address, custom_payload, forward_ton_amount, forward_payload) = load_transferMsg(in_msg_body);
 
-    int counter = 0;  
-      repeat(new_nft_number){
-       counter += 1;   
-       int item_index = begin_index + counter;
-       owned_nft_dict~udict_set(64,item_index, ""); 
-      }
-    
-    owned_nft_number = owned_nft_number + new_nft_number;
-    sendMsg(bounce::false(),sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),
-          response_destination,0,
-          excessesMsg(query_id));
-    
-    save_data(jetton_balance, owner_address, jetton_master_address, jetton_wallet_code,nft_collection_address,owned_nft_dict,owned_nft_number);
-    return();
-  } 
+        var old_jetton_balance = Storage::Jetton_balance;
+        int new_jettton_balance = Storage::Jetton_balance - jetton_amount;
+        throw_unless(705, equal_slices(Storage::Owner_address, sender_address) | equal_slices(Storage::Nft_collection_address, sender_address));
+        throw_unless(706, new_jettton_balance >= 0);
 
-  if (op == op::add_one_ft_and_nft()) { 
-    var (query_id, item_index,  response_destination) = load_addOneFtAndNftMsg(in_msg_body);
-     
-     jetton_balance = jetton_balance + min_unit() ;   
-     ;;add nft item_index to owned_nft_dict
-     owned_nft_dict~udict_set(64,item_index, ""); ;;store nft-item index as key,and "" as value
-    
-     ;; check message if from collection address and jetton balance >0
-     throw_unless(708, equal_slices(nft_collection_address, sender_address));
-     throw_unless(709, jetton_balance >= 0);
+        int old_nft_balance = old_jetton_balance / min_unit();
+        int new_nft_balance = new_jettton_balance / min_unit();
 
-     owned_nft_number = owned_nft_number + 1 ;
+        int need_to_burn_nft_number = 0;
+        if (Storage::Owned_nft_number > new_nft_balance) {
+            need_to_burn_nft_number = Storage::Owned_nft_number - new_nft_balance;
+            Storage::Owned_nft_number = new_nft_balance;
+        }
 
-    ;; send remain value to respnse_address                                
-     sendMsg(bounce::false(),sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),
-          response_destination,0,
-          excessesMsg(query_id));
-    
-    save_data(jetton_balance, owner_address, jetton_master_address, jetton_wallet_code,nft_collection_address,owned_nft_dict,owned_nft_number);
-    return();
-  }
+        int total_burn_nft_gas = (reduce_nft_supply_fee() + forward_ton_amount) * (need_to_burn_nft_number);
+        msg_value = msg_value - total_burn_nft_gas;
+        throw_unless(37, msg_value > 0);
 
-  if (op == op::reduce_one_ft_and_nft()) { 
-    var (query_id,item_index,  response_destination) = load_reduceOneFtAndNftMsg(in_msg_body);
+        Storage::Jetton_balance = new_jettton_balance;
 
-    jetton_balance = jetton_balance - min_unit();
+        int total_transfer_ft_gas = basice_transfer_ft_gas_consumption() + (transfer_one_ft_gas() * need_to_burn_nft_number);
+        int remain_gas_fee = msg_value - total_transfer_ft_gas;
 
-    ;; check message if from collection address and jetton balance >0
-    throw_unless(708, equal_slices(nft_collection_address, sender_address));
-    throw_unless(709, jetton_balance >= 0);
+        if (need_to_burn_nft_number > 0) {
+            int miniKey = 0;
+            repeat (need_to_burn_nft_number) {
+                (int item_index, slice value, int flag) = Storage::Owned_nft_dict.udict_get_next?(64, miniKey);
+                throw_unless(500, flag);
+                Storage::Owned_nft_dict~udict_set(64, item_index, "0"); ;; "0" means pending delete,"" means normal
+                miniKey = item_index;
 
-    ;; delete the minium nft item_index
-    (slice value, int flag) = owned_nft_dict~udict_delete_get?(64, item_index);
+                sendMsg(bounce::true(), sendMode::NONE(), Storage::Nft_collection_address, reduce_nft_supply_fee(), reduceNftSupplyMsg(query_id, item_index, Storage::Owner_address, response_address));
+            }
+        }
 
-    throw_unless(500 ,flag);       ;;if can not get and delete this nft item address, throw error
-     
-    owned_nft_number = owned_nft_number - 1;
-    ;;always send excess message to responese client wallet
-    sendMsg(bounce::false(),sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),
-          response_destination, 0, excessesMsg(query_id));
-    
-    save_data(jetton_balance, owner_address, jetton_master_address, jetton_wallet_code, nft_collection_address, owned_nft_dict, owned_nft_number);
-    return();
-  }
+        var (state_init, to_trc404_wallet_address) = getJettonWallet_InitStateAndAddress(to_address, Storage::Jetton_master_address, Storage::Jetton_wallet_code, Storage::Nft_item_code, Storage::Nft_collection_address);
+        sendMsgWithInitState(bounce::true(), sendMode::NONE(), to_trc404_wallet_address, remain_gas_fee, internalTransferMsg(query_id, jetton_amount, Storage::Owner_address, response_address, forward_ton_amount, forward_payload), state_init);
 
-  throw(0xffff);
+        save_data();
+        return ();
+    }
+
+    if (op == op::internal_transfer()) {
+        ;; incoming transfer
+        var (query_id, jetton_amount, from_address, response_address, forward_ton_amount, forward_payload) = load_internalTransferMsg(in_msg_body);
+
+        if (jetton_amount == 0) {
+            sendMsg(bounce::false(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),
+                response_address, 0, excessesMsg(query_id));
+            return ();
+        }
+
+        var (_, from_wallet_address) = getJettonWallet_InitStateAndAddress(from_address, Storage::Jetton_master_address, Storage::Jetton_wallet_code, Storage::Nft_item_code, Storage::Nft_collection_address);
+        throw_unless(707, equal_slices(Storage::Jetton_master_address, sender_address) | equal_slices(from_wallet_address, sender_address));
+
+        msg_value = msg_value - receive_ft_gas_consumption();
+        core_internal_transfer(msg_value, query_id, jetton_amount, from_address, response_address, forward_ton_amount, forward_payload);
+        return ();
+    }
+
+    if (op == op::cb_burn_nft()) {
+        var (query_id, item_index, responese_address) = load_cbBurnNftMsg(in_msg_body);
+
+        var (_, nft_item_address) = getNftItem_InitStateAndAddress(item_index, Storage::Nft_collection_address, Storage::Nft_item_code);
+        throw_unless(708, equal_slices(nft_item_address, sender_address)); ;;must from the right nft_item contract
+
+        ;;case1 : normal transfer FT, case2: transfer NFT,but receiver owned_nft_number >= owned_nft_limit,so need to burn this nft
+        (slice value, int flag) = Storage::Owned_nft_dict~udict_delete_get?(64, item_index);
+
+        sendMsg(bounce::false(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(), responese_address, 0, excessesMsg(query_id));save_data();
+        return ();
+    }
+
+    if (op == op::add_one_ft_and_nft()) {
+        var (query_id, item_index, nft_represent_ft_amount, old_owner_address, response_destination) = load_addOneFtAndNftMsg(in_msg_body);
+
+        var (_, nft_item_address) = getNftItem_InitStateAndAddress(item_index, Storage::Nft_collection_address, Storage::Nft_item_code);
+        var (_, from_wallet_address) = getJettonWallet_InitStateAndAddress(old_owner_address, Storage::Jetton_master_address, Storage::Jetton_wallet_code, Storage::Nft_item_code, Storage::Nft_collection_address);
+        throw_unless(708, equal_slices(nft_item_address, sender_address) | equal_slices(from_wallet_address, sender_address));
+
+        (slice value, int flag) = Storage::Pending_burn_nft_queue~udict_delete_get?(64, item_index);
+        if (~ flag) {
+            ;; if delete failed,means this NFT's status is normal, add this NFT index to  Storage::Owned_nft_dict
+            if (Storage::Owned_nft_number < Storage::Owned_nft_limit) {
+                Storage::Owned_nft_dict~udict_set(64, item_index, ""); ;;store nft-item index as key,and "" as value
+                Storage::Owned_nft_number = Storage::Owned_nft_number + 1;
+            } else {
+                msg_value = msg_value - transfer_nft_burn_nft_fee();
+                sendMsg(bounce::true(), sendMode::NONE(), Storage::Nft_collection_address, transfer_nft_burn_nft_fee(), reduceNftSupplyMsg(query_id, item_index, Storage::Owner_address, response_destination));
+            }
+        } else {
+            if (Storage::Owned_nft_number < Storage::Owned_nft_limit) {
+                Storage::Owned_nft_number = Storage::Owned_nft_number + 1;
+            }
+        }
+
+        int add_number = Storage::Jetton_balance + nft_represent_ft_amount;
+        if (add_number >= Storage::Pending_reduce_jetton_balance) {
+            Storage::Jetton_balance = add_number - Storage::Pending_reduce_jetton_balance;
+            throw_unless(709, Storage::Jetton_balance >= 0);
+        }  else {
+            Storage::Pending_reduce_jetton_balance = Storage::Pending_reduce_jetton_balance - add_number;
+            Storage::Jetton_balance = 0;
+        }
+
+        msg_value = msg_value - add_one_ft_and_nft_gas();
+        sendMsg(bounce::false(), sendMode::NONE(), response_destination, msg_value, excessesMsg(query_id));
+
+        save_data();
+        return ();
+    }
+
+    if (op == op::reduce_one_ft_and_nft()) {
+        var (query_id, item_index, to_address, reduce_and_add_amount, response_destination) = load_reduceOneFtAndNftMsg(in_msg_body);
+
+        throw_unless(708, equal_slices(Storage::Nft_collection_address, sender_address));
+
+        (slice value, int flag) = Storage::Owned_nft_dict.udict_get?(64, item_index);
+
+        if (flag == 0) {
+            ;;if this nft doesn't exist,means it hasn't been deployed,but it will be deployed later
+            Storage::Pending_burn_nft_queue~udict_set(64, item_index, ""); ;;store nft-item index as key,and "" as value
+            updateOwnedNftNumberAndJettonBalance(msg_value, reduce_and_add_amount, to_address, query_id, item_index, response_destination);
+        } else {
+            if (~ value.slice_empty?() & equal_slices(value, "0")) {
+                ;; if nft's value is "0", that means this NFT is pending delete,exit
+                sendMsg(bounce::false(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),
+                    response_destination, 0,
+                    commentMsg("This NFT has been burned"));
+            } else {
+                ;; if nft's value is "", means this NFT's status is normal
+                (slice value2, int flag2) = Storage::Owned_nft_dict~udict_delete_get?(64, item_index);
+                throw_unless(505, flag2);
+                updateOwnedNftNumberAndJettonBalance(msg_value, reduce_and_add_amount, to_address, query_id, item_index, response_destination);
+            }
+        }
+
+        return ();
+    }
+
+    if (op == op::change_owned_nft_limit()) {
+        (int query_id, int new_owned_nft_limit) = load_ChangeOwnedNftLimitMsg(in_msg_body);
+        throw_unless(403, equal_slices(sender_address, Storage::Owner_address));
+        throw_unless(505, new_owned_nft_limit <= owned_nft_limit());
+        Storage::Owned_nft_limit = new_owned_nft_limit;
+        sendMsg(bounce::false(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(), sender_address, 0, excessesMsg(query_id));
+        save_data();
+        return ();
+    }
+
+    throw(0xffff);
 }
 
-(int, slice, slice, cell, slice, cell, int) get_wallet_data() method_id {
-  return load_data();
+(int, slice, slice, cell, cell, slice, cell, int, int, int, cell) get_wallet_data() method_id {
+    slice ds = get_data().begin_parse();
+    return (ds~load_coins(), ;; jetton_balance
+        ds~load_msg_addr(), ;; owner_address
+        ds~load_msg_addr(), ;;jetton_master_address
+        ds~load_ref(), ;; jetton_wallet_code
+        ds~load_ref(), ;; nft_item_code
+        ds~load_msg_addr(), ;;nft_collection_address
+        ds~load_dict(), ;;owned_nft_dict
+        ds~load_int(item_index_length() + 1), ;;owned_nft_number
+        ds~load_uint(item_index_length()), ;;owned_nft_limit
+        ds~load_coins(), ;; pending_reduce_ jetton_balance
+        ds~load_dict());                      ;; pending_burn_nft_queue
 }

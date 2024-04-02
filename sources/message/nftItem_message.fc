@@ -1,16 +1,3 @@
-;;#include "../utils/stdlib.fc";
-;;************* message define by TEP standard 
-;;(5 messages: excesses,transfer,ownership_assigned,get_static_data,report_static_data)
-;; excesses  message defines in common_message.fc
-;; https://github.com/ton-blockchain/TEPs/blob/master/text/0062-nft-standard.md
-
-
-;; transfer#5fcc3d14 query_id:uint64 new_owner:MsgAddress 
-                  ;; response_destination:MsgAddress 
-                  ;; custom_payload:(Maybe ^Cell)  (optional custom data.) for getgems.io， this field directly set 1
-                  ;; forward_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
-                  ;;  = InternalMsgBody;
-;;To distinguish the transfer of tokens, so we used transfer_nft as op code
 int op::transfer_nft_item() asm "0x5fcc3d14 PUSHINT";   
 
 cell transferNftMsg(int query_id,slice new_owner,slice response_destination,int forward_ton_amount,slice  forward_payload){
@@ -28,56 +15,55 @@ cell transferNftMsg(int query_id,slice new_owner,slice response_destination,int 
     int query_id = in_msg_body~load_uint(64);
     slice new_owner = in_msg_body~load_msg_addr();
     slice response_destination = in_msg_body~load_msg_addr();
-    int custom_payload = in_msg_body~load_int(1);  ;; no use this field for getgems.io
+    int custom_payload = in_msg_body~load_int(1);  
     int forward_ton_amount = in_msg_body~load_coins();
-    ;;throw_unless(708, slice_bits(in_msg_body) >= 1);
     slice forward_payload = in_msg_body;
  return (query_id, new_owner, response_destination,
         custom_payload, forward_ton_amount, forward_payload);    
 }
 
-;; "op:deployNftItem"c = 0x78ccd28
 int op::deployNftItem()  asm "0x78ccd28 PUSHINT";
 
-(int, slice,slice  )  load_DeployNftItemMsg(slice in_msg_body) {
+(int,int, slice,slice,slice  )  load_DeployNftItemMsg(slice in_msg_body) {
     int query_id = in_msg_body~load_uint(64);
-    slice owner_address = in_msg_body~load_msg_addr();  ;; owner address(user's client wallet,like tonkeeper wallet) of user's trc404 wallet 
-    slice response_address = in_msg_body~load_msg_addr(); ;; the init sender address, need to send excess msg to this address at last
-    return (query_id, owner_address,response_address);
+    int nft_represent_ft_amount = in_msg_body~load_coins();
+    slice owner_address = in_msg_body~load_msg_addr();  
+    slice owner_trc404_wallet_address = in_msg_body~load_msg_addr();  
+    slice response_address = in_msg_body~load_msg_addr(); 
+    return (query_id,nft_represent_ft_amount, owner_address,owner_trc404_wallet_address,response_address);
 }
 
-cell  deployNftItemMsg(int query_id,slice owner_address,slice response_address) {
+cell  deployNftItemMsg(int query_id,int nft_represent_ft_amount,slice owner_address,slice owner_trc404_wallet_address,slice response_address) {
       return begin_cell()
             .store_uint(op::deployNftItem(), 32)
-            .store_uint(query_id, 64) ;; quert_id
-            .store_slice(owner_address)  ;; will set this address and nft_content in  first init of nft-item contract
+            .store_uint(query_id, 64) 
+            .store_coins(nft_represent_ft_amount)
+            .store_slice(owner_address) 
+            .store_slice(owner_trc404_wallet_address) 
             .store_slice(response_address) 
             .end_cell();
 }
 
-;;"op::burn_nft_item"c = 0x5ec28aa9
 int op::burn_nft_item() asm "0x5ec28aa9 PUSHINT";
 
-cell burnNftItemMsg(int query_id,slice from,slice response_address){
+cell burnNftItemMsg(int query_id,slice from,slice from_trc404_wallet,slice response_address){
      return   begin_cell().store_uint(op::burn_nft_item(), 32)
                          .store_uint(query_id, 64)
-                         .store_slice(from)  ;; the user's client wallet address
+                         .store_slice(from)  
+                         .store_slice(from_trc404_wallet)  
                          .store_slice(response_address)
                          .end_cell();        
 }
 
-(int,slice, slice) load_BurnNftItemMsg(slice in_msg_body){
+(int,slice,slice, slice) load_BurnNftItemMsg(slice in_msg_body) {
       int query_id = in_msg_body~load_uint(64);
-      ;;,use this from client wallet address calculate user nft contract address,check if the same with sender address
-      slice from = in_msg_body~load_msg_addr();   ;; owner address(user's client wallet,like tonkeeper wallet) of user's trc404 wallet 
-      slice response_address = in_msg_body~load_msg_addr(); ;; will send excess msg to this address
-   return (query_id, from, response_address);    
+      slice from = in_msg_body~load_msg_addr();  
+      slice from_trc404_wallet = in_msg_body~load_msg_addr();  
+      slice response_address = in_msg_body~load_msg_addr(); 
+   return (query_id,from,from_trc404_wallet, response_address);    
 }
 
 
-;;  ownership_assigned query_id:uint64 prev_owner:MsgAddress 
-;;         forward_payload:(Either Cell ^Cell) = InternalMsgBody;
-;;Actuall，this message is just a notify meesage for NFT reciver
 int op::ownership_assigned() asm "0x05138d91 PUSHINT";  
 
 cell ownershipAssignedMsg(int query_id,slice prev_owner,slice forward_payload) {
@@ -88,11 +74,11 @@ cell ownershipAssignedMsg(int query_id,slice prev_owner,slice forward_payload) {
                          .end_cell();        
 }
 
-;; get_static_data query_id:uint64 = InternalMsgBody;
+
 int op::get_static_data() asm "0x2fcb26a2 PUSHINT"; 
 
 cell getStaticDataMsg(int query_id){
-     return begin_cell().store_uint(op::get_static_data(), 32)   ;; msg_body begin
+     return begin_cell().store_uint(op::get_static_data(), 32)  
                         .store_uint(query_id, 64).end_cell();
 }
 
@@ -102,11 +88,10 @@ int load_GetStaticDataMsg(slice in_msg_body){
 }
 
 
-;;  report_static_data query_id:uint64 index:uint256 collection:MsgAddress = InternalMsgBody;
 int op::report_static_data() asm "0x8b771735 PUSHINT";  
 
 cell reportStaticDataMsg(int query_id,int index,slice collection_address){
-     return begin_cell().store_uint(op::report_static_data(), 32)   ;; msg_body begin
+     return begin_cell().store_uint(op::report_static_data(), 32)  
                          .store_uint(query_id, 64)
                          .store_uint(index, 256)
                          .store_slice(collection_address)

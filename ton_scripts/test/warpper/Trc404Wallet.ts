@@ -1,10 +1,23 @@
 import {
     Cell,
+    Slice,
     Address,
+    Builder,
+    beginCell,
+    ComputeError,
+    TupleItem,
+    TupleReader,
+    Dictionary,
+    contractAddress,
     ContractProvider,
     Sender,
     Contract,
+    ContractABI,
+    ABIType,
+    ABIGetter,
+    ABIReceiver,
     TupleBuilder,
+    DictionaryValue
 } from '@ton/core';
 import { SendMessageResult } from '@ton/sandbox';
 
@@ -29,52 +42,63 @@ export function checkTransferFtBranch2TX(txResult: SendMessageResult & { result:
         success: true,
     });
 
-    //2.check step2.1  sender wallet -->collection   ,reduce_one_nft msg
-    expect(txResult.transactions).toHaveTransaction({
+     //2.check step3  sender wallet -->collection    , reduce_nft_supply msg
+     expect(txResult.transactions).toHaveTransaction({
         from: senderTrc404Wallet,
         to: collection,
         success: true,
     });
 
-    //3.check step2.2  collection -->nftItem    , destroy_nft_item msg
+    //3.check step4    collection -->nftItem    , burn_nft_item msg
     expect(txResult.transactions).toHaveTransaction({
         from: collection,
         to: nftItem,
         success: true,
     });
+
+    //4.check step5    nftItem -->wallet    , cb_burn_nft msg
+     expect(txResult.transactions).toHaveTransaction({
+        from: nftItem,
+        to: senderTrc404Wallet,
+        success: true,
+    });
+
+   
 }
 
 
 //transfer FT, and sender will not burn NFT, but receiver will   mint NFT
 export function checkTransferFtBranch3TX(txResult: SendMessageResult & { result: void; }, senderTrc404Wallet: Address, receiverTrc404Wallet: Address,
     collection: Address, nftItem: Address) {
-    //1.check step1  sender wallet  -->receiver wallett
+    //1.check step1  sender wallet  -->receiver wallet
     expect(txResult.transactions).toHaveTransaction({
         from: senderTrc404Wallet,
         to: receiverTrc404Wallet,
         success: true,
     });
 
-    //2.check step2.1  receiver wallet -->collection   ,add_nft_supply msg
-    expect(txResult.transactions).toHaveTransaction({
+    //2.check step2  receiver wallet -->collection  , add_nft_supply msg
+       expect(txResult.transactions).toHaveTransaction({
         from: receiverTrc404Wallet,
         to: collection,
         success: true,
     });
 
-    //3.check step2.2  collection -->receiver wallet    , add_nft_list msg
-    expect(txResult.transactions).toHaveTransaction({
-        from: collection,
-        to: receiverTrc404Wallet,
-        success: true,
-    });
-
-     //4.check step3.1  collection -->nftItem  , deploy_nft_item msg
+     //3.check step3  collection -->nftItem  , deploy_nft_item msg
      expect(txResult.transactions).toHaveTransaction({
         from: collection,
         to: nftItem,
         success: true,
     });
+
+     //4.check step4  nftItem -->receiver wallet  , add_one_ft_and_nft msg
+     expect(txResult.transactions).toHaveTransaction({
+        from: nftItem,
+        to: receiverTrc404Wallet,
+        success: true,
+    });
+
+  
 }
 
 //transfer FT, and sender will  burn NFT, and receiver will also mint NFT
@@ -87,38 +111,46 @@ export function checkTransferFtBranch4TX(txResult: SendMessageResult & { result:
         success: true,
     });
 
-     //2.check step2.1  sender wallet -->collection   ,reduce_one_nft msg
-     expect(txResult.transactions).toHaveTransaction({
+    //2.check step2.1  sender wallet -->collection    , reduce_nft_supply msg
+      expect(txResult.transactions).toHaveTransaction({
         from: senderTrc404Wallet,
         to: collection,
         success: true,
     });
 
-    //3.check step2.2  collection -->nftItem    , destroy_nft_item msg
+    //3.check step2.2    collection -->nftItem    , burn_nft_item msg
     expect(txResult.transactions).toHaveTransaction({
         from: collection,
         to: burnNftItem,
         success: true,
     });
 
-    //4.check step3.1  receiver wallet -->collection   ,add_nft_supply msg
+    //4.check step2.3   nftItem--> sender wallet    , cb_burn_nft_item msg
+    expect(txResult.transactions).toHaveTransaction({
+        from: burnNftItem,
+        to: senderTrc404Wallet,
+        success: true,
+    });
+
+  
+    //5.check step3.1  receiver wallet -->collection   ,add_nft_supply msg
     expect(txResult.transactions).toHaveTransaction({
         from: receiverTrc404Wallet,
         to: collection,
         success: true,
     });
 
-    //5.check step3.2  collection -->receiver wallet    , add_nft_list msg
-    expect(txResult.transactions).toHaveTransaction({
+    //6.check step3.2  collection -->nftItem  , deploy_nft_item msg
+       expect(txResult.transactions).toHaveTransaction({
         from: collection,
-        to: receiverTrc404Wallet,
+        to: mintNftItem,
         success: true,
     });
 
-     //6.check step4 collection -->nftItem  , deploy_nft_item msg
-     expect(txResult.transactions).toHaveTransaction({
-        from: collection,
-        to: mintNftItem,
+    //7.check step3.3 nftItem--> receiver wallet   , add_one_ft_and_nft msg
+    expect(txResult.transactions).toHaveTransaction({
+        from: mintNftItem,
+        to: receiverTrc404Wallet,
         success: true,
     });
 }
@@ -141,15 +173,21 @@ export class Trc404Wallet implements Contract {
     async getWalletData(provider: ContractProvider) {
         let builder = new TupleBuilder();
         let source = (await provider.get('get_wallet_data', builder.build())).stack;
-  
+
         let jetton_balance = source.readBigNumber();
         let owner_address = source.readAddress();
         let jetton_master_address = source.readAddress();
         let jetton_wallet_code = source.readCell();
+        let nft_item_code = source.readCell();
         let nft_collection_address = source.readAddress();
         let owned_nft_dict = source.readCellOpt();
         let owned_nft_number = source.readBigNumber();
+        let owned_nft_limit = source.readBigNumber();
+        let pending_reduce_jetton_balance = source.readBigNumber();
+        let pending_burn_nft_queue = source.readCellOpt();
 
-        return { jetton_balance, owner_address, jetton_master_address, jetton_wallet_code, nft_collection_address, owned_nft_dict, owned_nft_number };
+        return { jetton_balance, owner_address, jetton_master_address, jetton_wallet_code,nft_item_code ,
+                nft_collection_address, owned_nft_dict, owned_nft_number,
+                owned_nft_limit,pending_reduce_jetton_balance,pending_burn_nft_queue };
     }
 }

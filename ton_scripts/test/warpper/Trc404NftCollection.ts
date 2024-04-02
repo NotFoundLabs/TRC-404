@@ -1,10 +1,23 @@
 import { 
     Cell,
+    Slice, 
     Address, 
+    Builder, 
+    beginCell, 
+    ComputeError, 
+    TupleItem, 
+    TupleReader, 
+    Dictionary, 
+    contractAddress, 
     ContractProvider, 
     Sender, 
     Contract, 
+    ContractABI, 
+    ABIType,
+    ABIGetter,
+    ABIReceiver,
     TupleBuilder,
+    DictionaryValue
 } from '@ton/core';
 
 
@@ -34,7 +47,6 @@ export class Trc404NftCollection implements Contract {
     async getGetFullData(provider: ContractProvider) {
         let builder = new TupleBuilder();
         let source = (await provider.get('get_full_data', builder.build())).stack;
-
         let init  =source.readNumber()
         let owner_address = source.readAddress();
         let next_item_index = source.readBigNumber();
@@ -43,11 +55,10 @@ export class Trc404NftCollection implements Contract {
         let royalty_params = source.readCell();
         let jetton_wallet_code = source.readCell();
         let total_supply = source.readBigNumber();
-        let owned_nft_limit = source.readBigNumber();
         let master_address  =source.readAddressOpt();
         
         return {init,owner_address,next_item_index,collection_content,nft_item_code,royalty_params,
-                jetton_wallet_code,total_supply,owned_nft_limit,master_address};
+                jetton_wallet_code,total_supply,master_address};
     }
     
     async getGetNftAddressByIndex(provider: ContractProvider, item_index: bigint) {
@@ -74,6 +85,7 @@ export class Trc404NftCollection implements Contract {
         let numerator = source.readBigNumber();
         let denominator = source.readBigNumber();
         let owner_address = source.readAddress();
+
         return {numerator,denominator,owner_address};
     }
  

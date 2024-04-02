@@ -7,7 +7,6 @@ export function getInitDeployMasterMsg(query_id:number){
     return beginCell().storeUint(op_deployMaster, 32).storeUint(query_id,64).endCell();
 }
 
-
 export async function initDeployTrc404Collection(sender_userid:number,deployTrc404CollectionContract:Address,collection_init:{code:Cell;data:Cell}, amountStr: string) {
     // ========================================
     let { wallet_contract, secretKey } = await getWalletContract(sender_userid);
@@ -20,7 +19,6 @@ export async function initDeployTrc404Collection(sender_userid:number,deployTrc4
     console.log("Deploying Trc404 collection contract to address: ", deployTrc404CollectionContract);
 
     //Deploy contract 
-    //let op_not_exist = 0x77123434 ;
     let packed = beginCell().endCell();
     await wallet_contract.sendTransfer({
         seqno,

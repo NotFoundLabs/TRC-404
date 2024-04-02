@@ -1,37 +1,62 @@
 import { 
     Cell,
+    Slice, 
     Address, 
+    Builder, 
+    beginCell, 
+    ComputeError, 
+    TupleItem, 
+    TupleReader, 
+    Dictionary, 
+    contractAddress, 
     ContractProvider, 
     Sender, 
     Contract, 
+    ContractABI, 
+    ABIType,
+    ABIGetter,
+    ABIReceiver,
     TupleBuilder,
+    DictionaryValue
 } from '@ton/core';
 import { SendMessageResult } from '@ton/sandbox';
+import { op_add_one_ft_and_nft } from '../../message/nftItemMsg';
 
 
 //transfer Nft
 export function checkTransferNftTX(txResult: SendMessageResult & { result: void; }, nftItem: Address,
-                            senderTrc404Wallet:Address, receiverTrc404Wallet: Address,collection: Address, ) {
-    //1.check step1  nftItem  -->collection
+                            senderTrc404Wallet:Address, receiverTrc404Wallet: Address,receiverAddress:Address,collection: Address, ) {
+    //1.check step1  nftItem  --> collection , request_transfer_one_ft_and_nft msg
     expect(txResult.transactions).toHaveTransaction({
         from: nftItem,
         to: collection,
         success: true,
     });
 
-    //2.check step2.1  receiver collection -->senderTrc404Wallet   ,reduce_one_ft_and_nft
+    //2.check step2  nftItem  --> receiverAddress , ownership_assigned() msg
     expect(txResult.transactions).toHaveTransaction({
-        from: collection,
+        from: nftItem ,
+        to: receiverAddress,
+        op: 0x05138d91 , // 0x05138d91  ownership_assigned()
+        //success: true,
+    });
+
+    //3.check step3.1  collection  --> senderTrc404Wallet ,reduce_one_ft_and_nft msg
+    expect(txResult.transactions).toHaveTransaction({
+        from: collection ,
         to: senderTrc404Wallet,
         success: true,
     });
 
-    //3.check step2.2  collection -->receiverTrc404Wallet   , add_one_ft_and_nft msg
-    expect(txResult.transactions).toHaveTransaction({
-        from: collection,
+    //4.check step3.2  senderTrc404Wallet  --> receiverTrc404Wallet , add_one_ft_and_nft msg
+     expect(txResult.transactions).toHaveTransaction({
+        from: senderTrc404Wallet,
         to: receiverTrc404Wallet,
+        //deploy: true,
+        op: op_add_one_ft_and_nft,   //0x8a7827a7, add_one_ft_and_nft msg
         success: true,
     });
+
 }
 
 
@@ -53,7 +78,6 @@ export class Trc404NftItem implements Contract {
         let builder = new TupleBuilder();
         let source = (await provider.get('get_nft_data', builder.build())).stack;
 
-        //init?, index,collection_address,owner_address,content
         let init = source.readNumber();   // -1:has init ,0 :hasn't init
         let index = source.readBigNumber();
         let collection_address = source.readAddress();

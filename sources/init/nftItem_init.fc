@@ -1,7 +1,7 @@
 
 #include "../utils/chain.fc";
 
-(cell, slice ) getNftItem_InitStateAndAddress(int item_index,slice collection_address,cell nft_item_code){
+(cell, slice ) getNftItem_InitStateAndAddress(int item_index,slice collection_address,cell nft_item_code) inline_ref {
     cell data = begin_cell()
               .store_uint(item_index,64)
               .store_slice(collection_address)

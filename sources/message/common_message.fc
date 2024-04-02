@@ -1,23 +1,15 @@
-#include "../utils/stdlib.fc";
-
-;;********** Message that both Jetton and NFT standard have defined.
-;;excesses query_id:uint64 = InternalMsgBody;
 int op::excesses() asm "0xd53276db PUSHINT";
 
 cell excessesMsg(int query_id){
-    return begin_cell().store_uint(op::excesses(), 32)   ;; msg_body begin
+    return begin_cell().store_uint(op::excesses(), 32)  
             .store_uint(query_id, 64).end_cell();
 }
 
-;;******************* custom message
-;; int commentFee() asm       "3000000 PUSHINT";   ;;0.003 ton ,must more than 0.003 ton
 cell commentMsg(slice content){
     return begin_cell().store_uint(0, 32).store_slice(content).end_cell();
 }
 
-;;******************* load incoming full message to get the context info
 (int, slice, int) load_in_msg_full(cell in_msg_cell){
-    ;; Context
     var cs = in_msg_cell.begin_parse();
     int flags = cs~load_uint(4);
     slice sender_address = cs~load_msg_addr();

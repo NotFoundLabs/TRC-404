@@ -1,235 +1,174 @@
-;; Trc404 collectionn smart contract
 #include "./utils/stdlib.fc";
 #include "./utils/sendMessage.fc";
 #include "./message/common_message.fc";
 #include "./message/wallet_message.fc";
 #include "./message/nftItem_message.fc";
+#include "./message/master_message.fc";
 #include "./message/nftCollection_message.fc";
 #include "./init/wallet_init.fc";
 #include "./init/nftItem_init.fc";
 #include "./utils/string.fc";
 
+int min_unit()      asm "1000000000 PUSHINT"; ;; 1 FT
+int max_supply()    asm "1000000 PUSHINT";   
+int mint_nft_gas()       asm "13000000 PUSHINT";   
+int mint_nft_unit_gas()   asm "6100000 PUSHINT";   
+int deploy_nft_item_gas()             asm "43000000 PUSHINT"; 
+int min_gas()       asm  "130000000 PUSHINT";    
 
-int max_supply()    asm "100000 PUSHINT";  
-int add_nft_supply_gas()      asm "16500000 PUSHINT";  
-int add_nft_supply_unit_gas()  asm "5100000 PUSHINT"; 
-int request_transfer_ft_gas() asm  "18000000 PUSHINT";  
-int deploy_nft_item_gas()             asm "43000000 PUSHINT";
-
-
-
-(int,slice,int, cell,cell, cell,cell,int,int,slice) load_data() inline {
+(int,slice,int, cell,cell, cell,cell,int,slice) load_data() inline {
   var ds = get_data().begin_parse();
-  var (owner_address,next_item_index,collection_content,nft_item_code, royalty_params,jetton_wallet_code,total_supply,owned_nft_limit) =
-  (
-    ds~load_msg_addr(), ;; owner_address 
-    ds~load_uint(64), ;; next_item_index ,
-    ds~load_ref(), ;; collection_content   
-    ds~load_ref(), ;; nft_item_code
-    ds~load_ref(),  ;; royalty_params  {numerator: 150n, denominator: 1000n, owner_address} means: 150/1000 = 15% royalty
-    ds~load_ref(),  ;; jetton_wallet_code
-    ds~load_uint(64), ;; total_supply
-    ds~load_uint(64) ;; owned_nft_limit ,means the max owned nft number for transfer FT operation
-  );
+  var (owner_address,next_item_index,collection_content,nft_item_code, royalty_params,jetton_wallet_code,total_supply) =
+        (
+         ds~load_msg_addr(), ;; owner_address 
+         ds~load_uint(64), ;; next_item_index ,
+         ds~load_ref(), ;; collection_content   
+         ds~load_ref(), ;; nft_item_code
+         ds~load_ref(),  ;; royalty_params  
+         ds~load_ref(),  ;; jetton_wallet_code
+         ds~load_uint(64) ;; total_supply,ie. current_supply
+        );
   if (ds.slice_bits() > 0) {    
-    slice master_address = ds~load_msg_addr();
-    return (-1, owner_address, next_item_index, collection_content, nft_item_code, royalty_params, jetton_wallet_code, total_supply, owned_nft_limit, master_address);
+      slice master_address = ds~load_msg_addr();
+      return (-1, owner_address,next_item_index,collection_content,nft_item_code, royalty_params,jetton_wallet_code,total_supply,master_address);
   } else {  
-    return (0, owner_address, next_item_index, collection_content, nft_item_code, royalty_params, jetton_wallet_code, total_supply, owned_nft_limit, null()); ;;  master not initialized yet
+       return (0, owner_address,next_item_index,collection_content,nft_item_code, royalty_params,jetton_wallet_code,total_supply,null()); 
   }
 }
 
-() save_data( slice owner_address, int next_item_index, cell collection_content, cell nft_item_code, cell royalty_params, cell jetton_wallet_code, int total_supply, int owned_nft_limit, slice master_address) impure inline {
+() save_data( slice owner_address,int next_item_index, cell collection_content,cell nft_item_code,cell royalty_params,cell jetton_wallet_code,int total_supply, slice master_address) impure inline {
   set_data(begin_cell()
-    .store_slice(owner_address) ;; admin address of trc404 Master and collection contract
-    .store_uint(next_item_index, 64)  ;;nft item_index
-    .store_ref(collection_content)  ;;collection_content need to contain item_uri key/value, Dapp should use item_uri + nft_item_content to get the full access url for the nft item,like: https://abc.com/content + nft_level(45) 
+    .store_slice(owner_address)       ;; admin address of trc404 Master and collection contract
+    .store_uint(next_item_index, 64)  ;; next_item_index
+    .store_ref(collection_content)    ;; collection_content 
     .store_ref(nft_item_code)         ;; nft_item_code
-    .store_ref(royalty_params)         ;; royalty_params
-    .store_ref(jetton_wallet_code)     ;; jetton_wallet_code
-    .store_uint(total_supply, 64)      ;; total_supply
-    .store_uint(owned_nft_limit, 64)      ;; owned_nft_limit
-    .store_slice(master_address) ;; trc404 Master contract
+    .store_ref(royalty_params)        ;; royalty_params
+    .store_ref(jetton_wallet_code)    ;; jetton_wallet_code
+    .store_uint(total_supply, 64)     ;; total_supply
+    .store_slice(master_address)      ;; trc404 Master contract
     .end_cell());
 }
 
 () recv_internal(int my_balance,int msg_value, cell in_msg_full, slice in_msg_body) impure {
   if (in_msg_body.slice_empty?()) { ;; ignore empty messages
     return ();
-  }
-  var ctx = var (flags, sender_address, fwd_fee) = load_in_msg_full(in_msg_full);
+  }  
+  var ctx = var (flags,sender_address,fwd_fee) = load_in_msg_full(in_msg_full);
   if (flags & 1) {
-    ;;on_bounce(in_msg_body);
     return ();
   }
   int op = in_msg_body~load_uint(32);
 
   ;;********begin to handle message
-  var ( init?, owner_address, next_item_index, collection_content, nft_item_code,royalty_params, jetton_wallet_code, total_supply, owned_nft_limit, master_address) = load_data();
+  var ( init?,owner_address,next_item_index, collection_content, nft_item_code,royalty_params, jetton_wallet_code,total_supply,master_address) = load_data();
      
   if ( op == op::initCollection()) {
-    if (~ init?) { ;;set init_owner_addres if owner_address is null,only support set once
-      var (query_id, init_master_address, response_address) = load_InitCollectionMsg(in_msg_body);
-      ;; set owner address  and master address
-      save_data(owner_address, next_item_index, collection_content, nft_item_code, royalty_params, jetton_wallet_code, total_supply, owned_nft_limit, init_master_address);      
-      
-      sendMsg(bounce::false(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(), response_address, 0, excessesMsg(query_id));
-    }  
+    if (~ init?) {
+       var (query_id,init_master_address,response_address) = load_InitCollectionMsg(in_msg_body);
+       save_data(owner_address,next_item_index, collection_content, nft_item_code,royalty_params, jetton_wallet_code,total_supply,init_master_address);      
+       sendMsg(bounce::false(),sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),response_address,0,excessesMsg(query_id));
+      }
     return ();
-  }
+   }
 
   if (op == op::get_royalty_params()) {
     int query_id = load_getRoyaltyParamsMsg(in_msg_body);
-    
-    sendMsg(bounce::false(),sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(), sender_address, 0, reportRoyaltyParamsMsg(query_id,royalty_params.begin_parse()));
+    sendMsg(bounce::false(),sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),sender_address,0,reportRoyaltyParamsMsg(query_id,royalty_params.begin_parse()));
     return ();
   }
 
   if (op == op::change_royalty_params()) {
     var (query_id ,new_royalty_params) = load_ChangeRoyaltyParamsMsg(in_msg_body);
     throw_unless(403, equal_slices(sender_address, owner_address));
-    sendMsg(bounce::false(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(), 
-      sender_address, 
-      0, 
-      excessesMsg(1));
-    
-    save_data(owner_address, next_item_index, collection_content, nft_item_code,new_royalty_params, jetton_wallet_code, total_supply, owned_nft_limit, master_address);
+    sendMsg(bounce::false(),sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),sender_address,0,excessesMsg(1));
+    save_data(owner_address,next_item_index, collection_content, nft_item_code,new_royalty_params, jetton_wallet_code,total_supply,master_address);
     return ();
   }
    
-  if (op == op::add_nft_supply()) { ;; send user-nft message to user-nft contract to invoke batch_mint method
-    var (query_id, current_nft_balance, new_nft_number, owner_address_of_sender_trc404_wallet, response_address ) = load_AddNftSupplyMsg(in_msg_body);
-    
-    throw_unless(402, total_supply + new_nft_number <= max_supply() );  ;; if the result of subtraction is negative,throw error and exit
-    
-    ;;need to make sure the message is from user's trc404 wallet contracts
-    var ( _, sender_trc404_wallet) = getJettonWallet_InitStateAndAddress(owner_address_of_sender_trc404_wallet, master_address, jetton_wallet_code, my_address());
+  if (op == op::add_nft_supply()) { 
+    var (query_id,new_nft_number,need_to_add_nft_balance, owner_address_of_sender_trc404_wallet,response_address ) = load_AddNftSupplyMsg(in_msg_body); 
+    throw_unless(402, total_supply + new_nft_number <= max_supply() ); 
+
+    var ( _, sender_trc404_wallet) = getJettonWallet_InitStateAndAddress(owner_address_of_sender_trc404_wallet,master_address,jetton_wallet_code,nft_item_code,my_address());
     throw_unless(403, equal_slices(sender_address, sender_trc404_wallet));
-    
-    ;;calculate the real new_nft_number according current_nft_balance and owned_nft_limit
-    if (current_nft_balance >= owned_nft_limit) {
-      new_nft_number = 0;
-    } else {
-      if ((current_nft_balance + new_nft_number) >=  owned_nft_limit ) {
-        new_nft_number =  owned_nft_limit - current_nft_balance;
-      }
+
+    int total_mint_nft_gas = mint_nft_gas() + (mint_nft_unit_gas() * (new_nft_number - 1)) ;
+    int deploy_nft_item_gas = (msg_value - total_mint_nft_gas) / new_nft_number;
+
+    int counter = 0;  
+    repeat(new_nft_number){
+            counter += 1;   
+            int item_index = next_item_index + counter;
+
+            int nft_represent_ft_amount =  min_unit();
+            if (need_to_add_nft_balance < min_unit()){
+                 nft_represent_ft_amount = need_to_add_nft_balance;
+             } else {
+                 need_to_add_nft_balance = need_to_add_nft_balance - min_unit();
+             }
+
+            var (state_init,nft_item_address) = getNftItem_InitStateAndAddress(item_index,my_address(),nft_item_code);
+            sendMsgWithInitState(bounce::true(),sendMode::NONE(),nft_item_address,deploy_nft_item_gas,deployNftItemMsg(query_id,nft_represent_ft_amount,owner_address_of_sender_trc404_wallet,sender_trc404_wallet,response_address),state_init);  
     }
 
-    ;;calculate the gas fee
-    int total_deploy_nft_forward_amount = deploy_nft_item_gas() * new_nft_number;
-    throw_unless(37, msg_value >  total_deploy_nft_forward_amount);
-    int counter = 0;  
-    ;;1. send  deployNftItem msg to deploy n new nftItems,needs to send n times
-    repeat(new_nft_number){
-      counter += 1;   
-      int item_index = next_item_index + counter ;
-
-      ;; send deployNftItem msg to nft_item_address,it will aslo set owner and content of this nft content
-      var (state_init,nft_item_address) = getNftItem_InitStateAndAddress(item_index,my_address(),nft_item_code);
-      sendMsgWithInitState(bounce::true(),sendMode::NONE(),
-        nft_item_address,
-        deploy_nft_item_gas(),
-        deployNftItemMsg(query_id,owner_address_of_sender_trc404_wallet,response_address),
-        state_init);      
-    } 
-    int total_add_nft_supply_gas = add_nft_supply_gas() + (add_nft_supply_unit_gas() * (new_nft_number - 1)) ;
-    int remain_gas_fee = msg_value - total_deploy_nft_forward_amount - total_add_nft_supply_gas;
-
-    ;;2. send add_nft_list msg to sender_trc404_wallet ,only need send 1 time
-    sendMsg(bounce::true(),sendMode::NONE(),
-      sender_trc404_wallet,
-      remain_gas_fee,
-      addNftListMsg(query_id,next_item_index,new_nft_number,response_address));
-
-    ;; increase next_item_index and  total_supply
     next_item_index = next_item_index + new_nft_number;
     total_supply = total_supply + new_nft_number;
 
-    save_data(owner_address, next_item_index, collection_content, nft_item_code,royalty_params, jetton_wallet_code,total_supply,owned_nft_limit,master_address);
+    save_data(owner_address,next_item_index, collection_content, nft_item_code,royalty_params, jetton_wallet_code,total_supply,master_address);
     return ();
   }
 
-  if (op == op::reduce_one_nft()) { ;; send user-nft message to user-nft contract to invoke batch_mint method
-    var (query_id, item_index, owner_address_of_sender_trc404_wallet,response_address ) = load_ReduceOneNftMsg(in_msg_body);
+  if (op == op::reduce_nft_supply()) { 
+    var (query_id, burn_item_index, owner_address_of_sender_trc404_wallet,response_address) = load_ReduceNftSupplyMsg(in_msg_body);
     
-    ;;need to make sure the message is from user's trc404 wallet contracts
-    var (_,sender_trc404_wallet) = getJettonWallet_InitStateAndAddress(owner_address_of_sender_trc404_wallet,master_address,jetton_wallet_code,my_address());
+    throw_unless(402, (total_supply - 1) >= 0 ); 
+    var ( _, sender_trc404_wallet) = getJettonWallet_InitStateAndAddress(owner_address_of_sender_trc404_wallet,master_address,jetton_wallet_code,nft_item_code,my_address());
     throw_unless(403, equal_slices(sender_address, sender_trc404_wallet));
 
-    ;; send burNftItem msg to nft_item_address,it will destory the nft item contract and return all remain ton coin to response address
-    var (state_init,nft_item_address) = getNftItem_InitStateAndAddress(item_index,my_address(),nft_item_code);
-    ;; The nft_item contract must have already been initialized,so just sendMsg,don't need to sendMsgWithInitState
-    sendMsg(bounce::true(),sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),
-      nft_item_address,0,
-      burnNftItemMsg(query_id,owner_address_of_sender_trc404_wallet,response_address));      
-
-    ;; descrease total_supply , don't need to decrease  next_item_index
     total_supply = total_supply - 1;
-    save_data(owner_address,next_item_index, collection_content, nft_item_code,royalty_params, jetton_wallet_code,total_supply,owned_nft_limit,master_address);
+
+    var (_, nft_item_address) = getNftItem_InitStateAndAddress(burn_item_index,my_address(),nft_item_code);         
+    sendMsg(bounce::true(),sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),nft_item_address,0,burnNftItemMsg(query_id,owner_address_of_sender_trc404_wallet,sender_trc404_wallet,response_address));   
+    save_data(owner_address,next_item_index, collection_content, nft_item_code,royalty_params, jetton_wallet_code,total_supply,master_address);
     return ();
   }
-
+   
   if ( op == op::request_transfer_one_ft_and_nft() ){
     var (query_id, item_index, from_addess, to_address, response_address) = load_RequestTransferOneFtAndNftMsg(in_msg_body);
 
-    ;;need to make sure the message is from  nftItem wallet contracts
     var (_, nft_item_contract_address) = getNftItem_InitStateAndAddress(item_index,my_address(),nft_item_code);
     throw_unless(403, equal_slices(sender_address, nft_item_contract_address));
 
-    throw_unless(37, msg_value > request_transfer_ft_gas() ); 
-    int gas_fee = (msg_value - request_transfer_ft_gas() ) / 2 ;
-
-    var (_,sender_trc404_wallet) = getJettonWallet_InitStateAndAddress(from_addess,master_address,jetton_wallet_code,my_address());
-    sendMsg(bounce::true(),sendMode::NONE(),
-      sender_trc404_wallet,
-      gas_fee ,
-      reduceOneFtAndNftMsg(query_id,item_index,response_address));
-    
-
-    var (state_init,receiver_trc404_wallet) = getJettonWallet_InitStateAndAddress(to_address,master_address,jetton_wallet_code,my_address());
-    sendMsgWithInitState(bounce::true(),sendMode::NONE(),
-      receiver_trc404_wallet,
-      gas_fee,
-      addOneFtAndNftMsg(query_id,item_index,response_address),
-      state_init);
+    var (state_init,sender_trc404_wallet) = getJettonWallet_InitStateAndAddress(from_addess,master_address,jetton_wallet_code,nft_item_code,my_address());
+    sendMsgWithInitState(bounce::true(),sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),sender_trc404_wallet,0 ,reduceOneFtAndNftMsg(query_id,item_index,to_address,min_unit(),response_address),state_init);   
     return ();
   }
-
-    
+  
   throw(0xffff);
 }
 
 ;; Get methods
-
 (int, cell, slice) get_collection_data() method_id {
-  var (init?, owner_address, next_item_index, collection_content, nft_item_code, royalty_params, jetton_wallet_code, total_supply, owned_nft_limit, master_address) = load_data();
-  return (next_item_index, collection_content, owner_address );   ;;nft standard parameters
+  var (init?,owner_address,next_item_index, collection_content, nft_item_code,royalty_params,jetton_wallet_code,total_supply,master_address) = load_data();
+  return (next_item_index, collection_content, owner_address );  
 }
 
-(int, slice,int, cell, cell, cell, cell, int, int, slice) get_full_data() method_id {
-  return load_data();
+(int,slice,int, cell,cell, cell,cell,int,slice) get_full_data() method_id {
+      return load_data();
 }
 
 slice get_nft_address_by_index(int index) method_id {
-  var (init?, owner_address, next_item_index, collection_content, nft_item_code, royalty_params, jetton_wallet_code, total_supply, owned_nft_limit, master_address) = load_data();
-  var (_, nft_item_address) = getNftItem_InitStateAndAddress(index, my_address(), nft_item_code);
+  var (init?,owner_address,next_item_index, collection_content , nft_item_code,royalty_params,jetton_wallet_code,total_supply,master_address) = load_data();
+  var (_,nft_item_address) = getNftItem_InitStateAndAddress(index,my_address(),nft_item_code);
   return nft_item_address;
 }
 
 (int, int, slice) royalty_params() method_id {
-  var (_, _, _, _,_, royalty,_,_,_,_) = load_data();
-  slice rs = royalty.begin_parse();  
-  return (rs~load_uint(16), rs~load_uint(16), rs~load_msg_addr()); ;;{numerator: 150n, denominator: 1000n, owner_address}
+     var (_, _, _, _,_, royalty,_,_,_) = load_data();
+     slice rs = royalty.begin_parse();  
+     return (rs~load_uint(16), rs~load_uint(16), rs~load_msg_addr()); 
 }
 
 cell get_nft_content(int index, cell individual_nft_content) method_id {
-  var (_,_,_, content, _,_, _,_,_,_) = load_data();
-  slice cs = content.begin_parse();
-  cs~load_ref();
-  slice common_content = cs~load_ref().begin_parse();
-  return (begin_cell()
-                      .store_uint(1, 8) ;; offchain tag
-                      .store_slice(common_content)
-                      .store_ref(individual_nft_content)
-          .end_cell());
+     return individual_nft_content;
 }

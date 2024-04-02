@@ -1,16 +1,41 @@
 import { Sha256 } from "@aws-crypto/sha256-js";
-import { Dictionary, beginCell, Cell, OpenedContract } from "@ton/core";
-import {TonClient4, TonClient,WalletContractV4} from "@ton/ton";
+import { Dictionary, beginCell, Cell, OpenedContract, Address } from "@ton/core";
+import { TonClient4, TonClient, WalletContractV4 } from "@ton/ton";
 
 const ONCHAIN_CONTENT_PREFIX = 0x00;
 const SNAKE_PREFIX = 0x00;
 const CELL_MAX_SIZE_BYTES = Math.floor((1023 - 8) / 8);
 
 
-function sleep(ms: number) {
+export function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+export const total_userid_item_index_length = 54;
+export const userid_prefix_length = 20;
+export const item_index_length = 34;
+
+// export const total_wallet_item_index_length = 64;
+// export const  wallet_prefix_length = 32 ;
+// export const  item_index_length   =32;
+
+export function calculateUseridItemIndex(userid: bigint, item_index: bigint) {
+    let walletItemIndex = beginCell().storeUint(userid, userid_prefix_length).storeUint(item_index, item_index_length)
+        .endCell().asSlice().loadUintBig(total_userid_item_index_length);
+    return walletItemIndex;
+}
+
+// export function calculateWalletItemIndex(ownerAddress:Address,item_index:bigint){
+//     // int prefix_wallet =  owner_address~load_uint(128);
+//     // slice walletItemIndexSlice = begin_cell().store_uint(prefix_wallet,128).store_uint(item_index,64)
+//     //                       .end_cell().begin_parse();
+//     // return walletItemIndexSlice~load_uint(192);
+//     let real_address = ownerAddress.hash;
+//     let wallet_prefix = beginCell().storeUint(real_address.readBigUInt64BE(),64).endCell().asSlice().loadUint(userid_prefix_length);
+//     let walletItemIndex = beginCell().storeUint(wallet_prefix,userid_prefix_length).storeUint(item_index,item_index_length)
+//                             .endCell().asSlice().loadUintBig(total_userid_item_index_length);
+//     return walletItemIndex;
+// }
 export async function waitNextSeqo(wallet_contract: OpenedContract<WalletContractV4>, lastSeqo: number) {
     let nextSeqno: number = lastSeqo;
     let counter = 0;
@@ -21,8 +46,8 @@ export async function waitNextSeqo(wallet_contract: OpenedContract<WalletContrac
         counter = counter + 1;
     }
     var end = performance.now();
-    var result =(end - start)/1000;
-    console.log('Waited', `${result}s`,',queried ', counter, 'times');
+    var result = (end - start) / 1000;
+    console.log('Waited', `${result}s`, ',queried ', counter, 'times');
 }
 
 const sha256 = (str: string) => {

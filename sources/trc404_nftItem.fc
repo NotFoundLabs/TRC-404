@@ -1,46 +1,47 @@
-;;Trc404 NFT Item Smart Contract
 #include "./utils/stdlib.fc";
-#include "./utils/sendMessage.fc";
-#include "./message/common_message.fc";
-#include "./message/nftItem_message.fc";
-#include "./message/nftCollection_message.fc";
 #include "./utils/string.fc";
 #include "./utils/chain.fc";
+#include "./utils/sendMessage.fc";
+#include "./message/common_message.fc";
+#include "./message/wallet_message.fc";
+#include "./message/nftItem_message.fc";
+#include "./init/wallet_init.fc";
+#include "./message/nftCollection_message.fc";
 
-
-;; gas fee
-int min_tons_for_storage()      asm "130000000 PUSHINT"; 
-int commentFee()                asm  "4000000 PUSHINT";  
-int deploy_gas_consumption()    asm "18000000 PUSHINT";  
-int min_request_transfer_one_ft_and_nft_gas() asm "100000000 PUSHINT"; 
+int min_tons_for_storage()                    asm "166000000 PUSHINT"; 
+int min_request_transfer_one_ft_and_nft_gas() asm "150000000 PUSHINT";  
+int commentFee()                asm  "3000000 PUSHINT";   
+int deploy_gas_consumption()    asm "15800000 PUSHINT";   
+int add_one_ft_and_nft_gas()   asm "18000000 PUSHINT";   
+int recieve_transfer_nft_item_gas()    asm "16000000 PUSHINT";  
+int reduce_one_ft_and_nft_gas()       asm "100000000 PUSHINT"; 
 
 
 (int, int, slice, slice, cell) load_data() {
     slice ds = get_data().begin_parse();
-    var (nft_item_index, collection_address) = (ds~load_uint(64), ds~load_msg_addr());
+    var (nft_item_index, collection_address ) = (ds~load_uint(64), ds~load_msg_addr());
 
     if (ds.slice_bits() > 0) {
-       ( slice owner_address, cell nft_content) = (ds~load_msg_addr() , ds~load_ref() );     
-      return (-1, nft_item_index, collection_address, owner_address, nft_content );
+      ( slice owner_address, cell nft_content) = (ds~load_msg_addr(), ds~load_ref());     
+      return (-1, nft_item_index, collection_address , owner_address, nft_content);
     } else {  
-      return (0, nft_item_index, collection_address,  null(), null()); ;; nft not initialized yet
+      return (0, nft_item_index, collection_address,  null(),null()); 
     }
 }
 
-
-() store_data(int nft_item_index, slice collection_address, slice owner_address, cell nft_content) impure {
+() store_data(int nft_item_index, slice collection_address,slice owner_address, cell nft_content) impure {
     set_data(begin_cell()
-            .store_uint(nft_item_index, 64)      ;;nft item index
+            .store_uint(nft_item_index, 64)   ;; nft_item_index
             .store_slice(collection_address)  ;; collection address  
-            .store_slice(owner_address)       ;; owner address (user's client wallet contract address)
-            .store_ref(nft_content)          ;; nft content
+            .store_slice(owner_address)       ;; owner address
+            .store_ref(nft_content)           ;; nft content
             .end_cell()
     );
 }
 
 () send_msg(slice to_address, int amount, int op, int query_id, builder payload, int send_mode) impure inline {
     var msg = begin_cell()
-            .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
+            .store_uint(0x10, 6) 
             .store_slice(to_address)
             .store_coins(amount)
             .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
@@ -53,93 +54,67 @@ int min_request_transfer_one_ft_and_nft_gas() asm "100000000 PUSHINT";
     send_raw_message(msg.end_cell(), send_mode);
 }
 
+
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) { ;; ignore empty messages
       return ();
     }
     var ctx = var (flags,sender_address,fwd_fee) = load_in_msg_full(in_msg_full);
     if (flags & 1) {
-      ;;on_bounce(in_msg_body);
       return ();
     }
     int op = in_msg_body~load_uint(32);
 
     ;;********begin to handle message
-    (int init?, int index, slice collection_address,slice owner_address, cell nft_content) = load_data();
-     if ( op == op::deployNftItem()) {
-       if ( ~ init? ) { 
-        ;;set init_owner_addres,nft_content,etc. if init flag is 0/false,only support set once     
-        (int query_id,slice new_owner_address,slice response_address) = load_DeployNftItemMsg(in_msg_body);
+    (int init?, int index, slice collection_address,slice owner_address,cell nft_content) = load_data();
 
-        throw_unless(405, equal_slices(collection_address, sender_address));
+    if ( op == op::deployNftItem()) {
+      if ( ~ init? ) {  
+       (int query_id,int nft_represent_ft_amount,slice new_owner_address,slice new_owner_trc404_wallet_address,slice response_address) = load_DeployNftItemMsg(in_msg_body);
 
-        ;;generate rander NFT level ,range(0-99),the higher level, the higher value
-        ;;Notice: You can replace it with other code logic to generate the content of NFT,
-        int level = rand(100);
-        cell new_nft_content = begin_cell().store_uint(level,64).end_cell(); 
+       throw_unless(405, equal_slices(collection_address, sender_address));
 
-        ;;send received comment to nft reciever's client wallet (like tonkeeper wallet)
-        slice notify_message = begin_cell().store_slice("Received TRC404 NFT #") 
-                                            .store_slice(int_to_string(index)) 
-                                            .store_slice(" NFT Level:")  
-                                            .store_slice(int_to_string(level))
-                                            .end_cell().begin_parse();  
+       int level = rand(100);
+       cell new_nft_content = begin_cell().store_uint(level,64).end_cell(); 
 
-        sendMsg(bounce::false(),sendMode::NONE(),
-                new_owner_address,commentFee(),
-                commentMsg(notify_message));
+       msg_value = msg_value - deploy_gas_consumption();
+       sendMsg(bounce::true(),sendMode::NONE(),new_owner_trc404_wallet_address, msg_value,addOneFtAndNftMsg(query_id,index,nft_represent_ft_amount,new_owner_address,response_address));
 
-        msg_value = msg_value - deploy_gas_consumption() - commentFee();
-
-         ;; send remain value to repsonse_address/init sender address
-         sendMsg(bounce::false(),sendMode::NONE(),
-                 response_address,msg_value,
-                 excessesMsg(query_id));
-
-        store_data(index, collection_address, new_owner_address, new_nft_content);
-       }  
-       return ();
+       store_data(index, collection_address, new_owner_address, new_nft_content);
+      }  
+      return ();
      } 
 
    if ( op == op::burn_nft_item()) {
-      var (query_id, from, response_address) = load_BurnNftItemMsg(in_msg_body);
+      var (query_id,from,from_trc404_wallet, response_address) = load_BurnNftItemMsg(in_msg_body);
 
       throw_unless(405, equal_slices(collection_address, sender_address));
-      ;; send remain value to repsonse_address/init sender address,and destroy this nft item contract
-      sendMsg(bounce::false(), sendMode::CARRY_ALL_REMAINING_BALANCE() + sendMode::DESTROY_ACCOUNT_IF_ZERO(),
-              response_address,0,
-              excessesMsg(query_id));
-
+      sendMsg(bounce::false(),sendMode::CARRY_ALL_REMAINING_BALANCE() + sendMode::DESTROY_ACCOUNT_IF_ZERO(),from_trc404_wallet,0,cbBurnNftMsg(query_id, index, response_address)); 
       return();
    }
    
     if (op == op::transfer_nft_item()) {    
       var (query_id,new_owner, response_address,custom_payload, forward_amount, forward_payload) = load_TransferNftItemMsg(in_msg_body);
 
-      ;;maker sure message from  owner
-      throw_unless(405, equal_slices(owner_address, sender_address));
+      throw_unless(405, equal_slices(owner_address, sender_address));    
 
-      ;; 1.send ownership_assigned message to nft reciever's client wallet (like tonkeeper wallet)
-      if ( forward_amount > 0 ) {
-        send_msg(new_owner, forward_amount, op::ownership_assigned(), query_id,
-               begin_cell().store_slice(owner_address).store_slice(forward_payload), 1);  ;; paying fees, revert on errors
-      }
-
-      ;; 2. send requestTransferFtMsg to collection contract ,at least need 0.053 ton
-      sendMsg(bounce::true(),sendMode::NONE(),
-              collection_address,min_request_transfer_one_ft_and_nft_gas(),
-              requestTransferOneFtAndNftMsg(query_id, index,owner_address,new_owner,response_address)); ;;transfer 1 NFT ,will also transfer 1 FT 
-    
-      int rest_amount = my_balance  -  forward_amount - min_tons_for_storage() - fwd_fee - fwd_fee;
+      int rest_amount = msg_value  -  forward_amount - min_tons_for_storage() - fwd_fee  - fwd_fee;
       throw_unless(402, rest_amount >= 0); ;
-     
-     ;; 3. send excess msg to  response_address
+
+      if ( forward_amount > 0 ) {
+         send_msg(new_owner, forward_amount, op::ownership_assigned(), query_id,
+                  begin_cell().store_slice(owner_address).store_slice(forward_payload), 1);  ;; paying fees, revert on errors
+      }
+      
+      sendMsg(bounce::true(),sendMode::NONE(),collection_address,min_request_transfer_one_ft_and_nft_gas(),requestTransferOneFtAndNftMsg(query_id,index,owner_address,new_owner,response_address));
+
       int need_response = response_address.preload_uint(2) != 0; ;; if NOT addr_none: 00
        if (need_response) {
         force_chain(response_address);
-        send_msg(response_address, rest_amount, op::excesses(), query_id, null(), 1); ;; paying fees, revert on errors
-     }
-      store_data(index, collection_address,new_owner, nft_content);
+        send_msg(response_address, rest_amount , op::excesses(), query_id, null(), 1); ;; paying fees, revert on errors
+      }
+      
+      store_data(index, collection_address, new_owner, nft_content);
       return ();
     }
 
@@ -154,11 +129,8 @@ int min_request_transfer_one_ft_and_nft_gas() asm "100000000 PUSHINT";
     throw(0xffff);
 }
 
-;;
-;;  GET Methods
-;;
 
 (int, int, slice, slice, cell) get_nft_data() method_id {
-  (int init?, int index, slice collection_address, slice owner_address, cell content) = load_data();
-  return (init?, index, collection_address, owner_address, content); ;;nft item standard
+  (int init?, int index, slice collection_address, slice owner_address,cell content) = load_data();
+  return (init?, index,collection_address,owner_address,content); 
 }

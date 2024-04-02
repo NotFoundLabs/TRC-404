@@ -1,19 +1,8 @@
-;;#include "../utils/stdlib.fc";
-;;(6 messages: excesses,transfer,transfer_notification,internal_transfer,burn,burn_notification,
-;;             transfer_nft,internal_transfer_nft)
-;; excesses  message defines in common_message.fc
-;; reference: https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md
+ #include "../utils/const.fc";
 
-
-;;transfer query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
-        ;;    response_destination:MsgAddress custom_payload:(Maybe ^Cell)
-        ;;    forward_ton_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
-        ;;    = InternalMsgBody;
 int op::transfer() asm "0x0f8a7ea5 PUSHINT";
 
-cell transferMsg(int query_id,int amount,slice destination,slice response_destination
-                        ,cell custom_payload,int forward_ton_amount, slice forward_payload
-                        ){
+cell transferMsg(int query_id,int amount,slice destination,slice response_destination,cell custom_payload,int forward_ton_amount, slice forward_payload){
      return   begin_cell().store_uint(op::transfer(), 32)
                          .store_uint(query_id, 64)
                          .store_coins(amount)
@@ -25,22 +14,18 @@ cell transferMsg(int query_id,int amount,slice destination,slice response_destin
                          .end_cell();        
 }
 
-(int, int, slice, slice, cell, int, slice
-) load_transferMsg(slice in_msg_body){
-    int query_id = in_msg_body~load_uint(64);
-    int amount = in_msg_body~load_coins();
-    slice destination = in_msg_body~load_msg_addr();
-    slice response_destination = in_msg_body~load_msg_addr();
-    cell custom_payload = in_msg_body~load_dict();
-    int forward_ton_amount = in_msg_body~load_coins();
-    slice forward_payload = in_msg_body;
- return ( query_id, amount, destination, response_destination,custom_payload, forward_ton_amount, forward_payload
-          );    
+(int, int, slice, slice, cell, int, slice) load_transferMsg(slice in_msg_body){
+     int query_id = in_msg_body~load_uint(64);
+     int amount = in_msg_body~load_coins();
+     slice destination = in_msg_body~load_msg_addr();
+     slice response_destination = in_msg_body~load_msg_addr();
+     cell custom_payload = in_msg_body~load_dict();
+     int forward_ton_amount = in_msg_body~load_coins();
+     slice forward_payload = in_msg_body;
+     return ( query_id, amount, destination, response_destination,custom_payload, forward_ton_amount, forward_payload
+     );    
 }
 
-;; transfer_notification query_id:uint64 amount:(VarUInteger 16)
-;;            sender:MsgAddress forward_payload:(Either Cell ^Cell)
-;;            = InternalMsgBody;
 int op::transfer_notification() asm "0x7362d09c PUSHINT";
 
 cell transferNotificationMsg(int query_id,int amount,slice sender, slice forward_payload){
@@ -52,17 +37,10 @@ cell transferNotificationMsg(int query_id,int amount,slice sender, slice forward
                          .end_cell();        
 }
 
-;; internal_transfer    query_id:uint64 
-;;                      amount:(VarUInteger 16)
-;;                      from:MsgAddress
-;;                      response_address:MsgAddress
-;;                      forward_ton_amount:(VarUInteger 16)
-;;                      forward_payload:(Either Cell ^Cell)
-;;                      = InternalMsgBody;
 int op::internal_transfer() asm "0x178d4519 PUSHINT";
 
 cell internalTransferMsg(int query_id,int amount,slice from,slice response_destination,
-                              int forward_ton_amount, slice forward_payload ){
+     int forward_ton_amount, slice forward_payload ){
      return   begin_cell().store_uint(op::internal_transfer(), 32)
                          .store_uint(query_id, 64)
                          .store_coins(amount)
@@ -74,22 +52,40 @@ cell internalTransferMsg(int query_id,int amount,slice from,slice response_desti
 }
 
 (int, int, slice, slice,int, slice) load_internalTransferMsg(slice in_msg_body){
-      int query_id = in_msg_body~load_uint(64);
-      int amount = in_msg_body~load_coins();
-      slice from = in_msg_body~load_msg_addr();
-      slice response_address = in_msg_body~load_msg_addr();
-      int forward_ton_amount = in_msg_body~load_coins();
-      slice forward_payload = in_msg_body;
- return (query_id, amount, from, response_address, forward_ton_amount, forward_payload
-        );    
+     int query_id = in_msg_body~load_uint(64);
+     int amount = in_msg_body~load_coins();
+     slice from = in_msg_body~load_msg_addr();
+     slice response_address = in_msg_body~load_msg_addr();
+     int forward_ton_amount = in_msg_body~load_coins();
+     slice forward_payload = in_msg_body;
+     return (query_id, amount, from, response_address, forward_ton_amount, forward_payload);    
 }
 
 
-;;"op::add_nft_list"c = 0x5ded7a8d
+int op::burn() asm "0x595f07bc PUSHINT";
+
+cell burnMsg(int query_id, int amount, slice response_destination, cell custom_payload){
+     return   begin_cell().store_uint(op::burn(), 32)
+                         .store_uint(query_id, 64)
+                         .store_coins(amount)
+                         .store_slice(response_destination)
+                         .store_ref(custom_payload)
+                         .end_cell();      
+}
+
+(int, int, slice, slice) load_burnMsg(slice in_msg_body){
+     int query_id = in_msg_body~load_uint(64);
+     int amount = in_msg_body~load_coins();
+     slice response_destination = in_msg_body~load_msg_addr();
+     slice custom_payload = in_msg_body;
+     return (query_id, amount, response_destination, custom_payload);    
+}
+
+
 int op::add_nft_list() asm "0x5ded7a8d PUSHINT";  
 
 cell addNftListMsg(int query_id,int begin_index,int new_nft_number,slice response_destination){
-     return   begin_cell().store_uint(op::add_nft_list(), 32)
+     return  begin_cell().store_uint(op::add_nft_list(), 32)
                          .store_uint(query_id, 64)
                          .store_uint(begin_index, 64)
                          .store_uint(new_nft_number, 64) 
@@ -98,48 +94,80 @@ cell addNftListMsg(int query_id,int begin_index,int new_nft_number,slice respons
 }
 
 (int,int,int,slice) load_addNftListMsg(slice in_msg_body){
-    int query_id = in_msg_body~load_uint(64);
-    int begin_index = in_msg_body~load_uint(64);
-    int new_nft_number = in_msg_body~load_uint(64);
-    slice response_destination = in_msg_body~load_msg_addr();
- return (query_id, begin_index,new_nft_number, response_destination);    
+     int query_id = in_msg_body~load_uint(64);
+     int begin_index = in_msg_body~load_uint(64);
+     int new_nft_number = in_msg_body~load_uint(64);
+     slice response_destination = in_msg_body~load_msg_addr();
+     return (query_id, begin_index,new_nft_number, response_destination);    
 }
 
 
-;;"op::add_one_ft_and_nft"c = 0x8a7827a7
 int op::add_one_ft_and_nft() asm "0x8a7827a7 PUSHINT";  
 
-cell addOneFtAndNftMsg(int query_id,int item_index,slice response_destination){
-     return   begin_cell().store_uint(op::add_one_ft_and_nft(), 32)
+cell addOneFtAndNftMsg(int query_id,int item_index, 
+                      int nft_represent_ft_amount,
+                      slice old_owner_address,
+                      slice response_destination){
+     return  begin_cell().store_uint(op::add_one_ft_and_nft(), 32)
                          .store_uint(query_id, 64)
                          .store_uint(item_index, 64)
+                         .store_coins(nft_represent_ft_amount)
+                         .store_slice(old_owner_address)
                          .store_slice(response_destination)
                          .end_cell();        
 }
 
-(int,int,slice) load_addOneFtAndNftMsg(slice in_msg_body){
-    int query_id = in_msg_body~load_uint(64);
-    int item_index = in_msg_body~load_uint(64);
-    slice response_destination = in_msg_body~load_msg_addr();
- return (query_id, item_index,  response_destination);    
+(int,int,int,slice,slice) load_addOneFtAndNftMsg(slice in_msg_body){
+     int query_id = in_msg_body~load_uint(64);
+     int item_index = in_msg_body~load_uint(64);
+     int nft_represent_ft_amount = in_msg_body~load_coins();
+     slice old_owner_address = in_msg_body~load_msg_addr();
+     slice response_destination = in_msg_body~load_msg_addr();
+     return (query_id, item_index,nft_represent_ft_amount,old_owner_address,response_destination);    
 }
 
-;;"op::reduce_one_ft_and_nft"c = 0x6f8c0042
+int op::cb_burn_nft() asm "0xa0637415 PUSHINT";  
+
+cell cbBurnNftMsg(int query_id,int item_index,slice responese_address){
+       return   begin_cell().store_uint(op::cb_burn_nft(), 32)
+                         .store_uint(query_id, 64)
+                         .store_uint(item_index, 64)
+                         .store_slice(responese_address)
+                         .end_cell();        
+}
+
+(int,int,slice) load_cbBurnNftMsg(slice in_msg_body){
+     int query_id = in_msg_body~load_uint(64);
+     int item_index = in_msg_body~load_uint(64);
+     slice responese_address = in_msg_body~load_msg_addr();
+     return (query_id, item_index, responese_address);    
+}
+
 int op::reduce_one_ft_and_nft() asm "0x6f8c0042 PUSHINT";  
 
-cell reduceOneFtAndNftMsg(int query_id,int item_index,slice response_destination){
+cell reduceOneFtAndNftMsg(int query_id,int item_index,slice to_address,int reduce_and_add_amount,slice response_destination){
      return   begin_cell().store_uint(op::reduce_one_ft_and_nft(), 32)
                          .store_uint(query_id, 64)
                          .store_uint(item_index, 64)
+                         .store_slice(to_address)
+                         .store_coins(reduce_and_add_amount)
                          .store_slice(response_destination)
                          .end_cell();        
 }
 
-(int,int,slice) load_reduceOneFtAndNftMsg(slice in_msg_body){
-    int query_id = in_msg_body~load_uint(64);
-    int item_index = in_msg_body~load_uint(64);
-    slice response_destination = in_msg_body~load_msg_addr();
- return (query_id, item_index, response_destination);    
+(int,int,slice,int,slice) load_reduceOneFtAndNftMsg(slice in_msg_body){
+     int query_id = in_msg_body~load_uint(64);
+     int item_index = in_msg_body~load_uint(64);
+     slice to_address = in_msg_body~load_msg_addr();
+     int  reduce_and_add_amount = in_msg_body~load_coins();
+     slice response_destination = in_msg_body~load_msg_addr();
+     return (query_id, item_index,to_address, reduce_and_add_amount,response_destination);    
 }
 
+int op::change_owned_nft_limit() asm "0xba5f8281 PUSHINT";
 
+(int,int) load_ChangeOwnedNftLimitMsg(slice in_msg_body){
+     int query_id = in_msg_body~load_uint(64);
+     int owned_nft_limit =  in_msg_body~load_uint(total_userid_item_index_length());
+     return (query_id,owned_nft_limit);
+}
