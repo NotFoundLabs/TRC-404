@@ -1,30 +1,11 @@
-import { owned_nft_limit, freemint_max_supply, freemint_price } from "../contract/compileContract";
-import { getWalletContract, user1, user2 } from "../contract/clientAndWallet";
-import { WalletContractV4 } from "@ton/ton";
-import { OpenedContract, fromNano, toNano, Address, SendMode } from "@ton/core";
-
+import { owned_nft_limit } from "../contract/compileContract";
+import { toNano } from "@ton/core";
 import "@ton/test-utils";
-import { Cell } from "@ton/core";
-import { Trc404Master, checkMintFtTX } from "./warpper/Trc404Master";
-import { Trc404Wallet } from "./warpper/Trc404Wallet";
+import { Trc404Master,  } from "./warpper/Trc404Master";
 import { Trc404NftCollection } from "./warpper/Trc404NftCollection";
-import { Trc404NftItem } from "./warpper/Trc404NftItem";
 import { deployAndCheckCollectionAndMasterContract, checkMintFt } from "../utils/check";
-
-import {
-    Blockchain,
-    SandboxContract,
-    TreasuryContract,
-    printTransactionFees,
-    prettyLogTransactions,
-    RemoteBlockchainStorage,
-    wrapTonClient4ForRemote,
-} from "@ton/sandbox";
-import { getInitDeployMasterMsg } from "../contract/initDeployContract";
-import { buildMintFtMsg, buildWithdrawMsg, buildChangeFreemintConfigMsg, buildChangeMasterAdminMsg } from "../message/masterMsg";
-
-let max_supply = 1000000;
-
+import {Blockchain,SandboxContract,TreasuryContract,} from "@ton/sandbox";
+import { buildMintFtMsg } from "../message/masterMsg";
 
 describe('Test Trc404 Master admin Mint ', () => {
     let blockchain: Blockchain;

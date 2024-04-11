@@ -1,26 +1,5 @@
-import {
-    Cell,
-    Slice,
-    Address,
-    Builder,
-    beginCell,
-    ComputeError,
-    TupleItem,
-    TupleReader,
-    Dictionary,
-    contractAddress,
-    ContractProvider,
-    Sender,
-    Contract,
-    ContractABI,
-    ABIType,
-    ABIGetter,
-    ABIReceiver,
-    TupleBuilder,
-    DictionaryValue
-} from '@ton/core';
+import {Cell,Address,ContractProvider,Sender,Contract,TupleBuilder} from '@ton/core';
 import { SendMessageResult } from '@ton/sandbox';
-
 
 export function checkMintFtTX(txResult: SendMessageResult & { result: void; }, sender: Address, master: Address, wallet: Address,
     collection: Address, nftItem: Address) {
@@ -57,11 +36,7 @@ export function checkMintFtTX(txResult: SendMessageResult & { result: void; }, s
         to: wallet,
         success: true,
     });
-
-
 }
-
-
 
 export class Trc404Master implements Contract {
 
@@ -91,8 +66,7 @@ export class Trc404Master implements Contract {
         let total_supply = source.readBigNumber();
 
         return {
-            max_supply, mintable, owner, content, jetton_wallet_code, nft_item_code,
-            nft_collection_address, total_supply
+            max_supply, mintable, owner, content, jetton_wallet_code, nft_item_code,nft_collection_address, total_supply
         };
     }
 
@@ -110,5 +84,4 @@ export class Trc404Master implements Contract {
         let result = source.readAddress();
         return result;
     }
-
 }

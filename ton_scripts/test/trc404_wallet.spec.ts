@@ -1,28 +1,12 @@
-import { owned_nft_limit, freemint_max_supply, freemint_price, getTrc404WalletAddressAndInit, CompiledCodeList, getTrc404NftItemAddressAndInit } from "../contract/compileContract";
-import { getWalletContract, user1, user2 } from "../contract/clientAndWallet";
-import { WalletContractV4 } from "@ton/ton";
-import { OpenedContract, fromNano, toNano, Address } from "@ton/core";
-
+import { owned_nft_limit, getTrc404WalletAddressAndInit, CompiledCodeList } from "../contract/compileContract";
+import {  toNano, Address } from "@ton/core";
 import "@ton/test-utils";
-import { Cell } from "@ton/core";
-
 import { Trc404Master } from "./warpper/Trc404Master";
 import { Trc404Wallet, checkTransferFtBranch1TX, checkTransferFtBranch2TX, checkTransferFtBranch3TX, checkTransferFtBranch4TX } from "./warpper/Trc404Wallet";
 import { Trc404NftCollection } from "./warpper/Trc404NftCollection";
-import { Trc404NftItem } from "./warpper/Trc404NftItem";
 import { deployAndCheckCollectionAndMasterContract, checkMintFt } from "../utils/check";
-
-import {
-    Blockchain,
-    SandboxContract,
-    TreasuryContract,
-    printTransactionFees,
-    prettyLogTransactions,
-    RemoteBlockchainStorage,
-    wrapTonClient4ForRemote,
-} from "@ton/sandbox";
-import { getInitDeployMasterMsg } from "../contract/initDeployContract";
-import { buildMintFtMsg, buildWithdrawMsg, buildChangeFreemintConfigMsg, buildChangeMasterAdminMsg } from "../message/masterMsg";
+import {Blockchain,SandboxContract,TreasuryContract,printTransactionFees,} from "@ton/sandbox";
+import { buildMintFtMsg} from "../message/masterMsg";
 import { buildTransferFtMsg } from "../message/walletMsg";
 import { buildChangeOwnedNftLimitMsg } from "../message/nftCollectionMsg";
 
@@ -48,7 +32,6 @@ describe('Test Trc404 Wallet transferFT,include 4 branches ,and change owned_nft
         Collection = res.Collection;
         CompliedCodes = res.compliedCodes;
 
-
         let mintAmount = 2.5;  //mint 2.5 FT to user1 
         let mintAmount2 = 2;  //mint 2 FT to  user2
         let gasFee = 0.1 * mintAmount; //0.15 ton   gas_fee nees 0.15 ~  0.1 * owned_nft_limit/toNano("1") 
@@ -67,7 +50,6 @@ describe('Test Trc404 Wallet transferFT,include 4 branches ,and change owned_nft
         let { address: user2WalletAddress, state_init: user2WalletStateInit } = await getTrc404WalletAddressAndInit(user2.address, Master.address,
             CompliedCodes.erc404_jetton_wallet_code, CompliedCodes.erc404_nft_item_code, Collection.address);
         User2_Wallet = blockchain.openContract(new Trc404Wallet(user2WalletAddress, user2WalletStateInit));
-
 
         let userIdItemIndex2 = 3n;
 
@@ -166,9 +148,6 @@ describe('Test Trc404 Wallet transferFT,include 4 branches ,and change owned_nft
         });
         printTransactionFees(transferFtResult.transactions);
         //check Branch 2 tx
-        //  let userid =1n;
-        //  let item_index=1n;
-        //  let userIdItemIndex = calculateUseridItemIndex(userid,item_index);    
         let userIdItemIndex = 1n;
         const nft_item1_adddress = await Collection.getGetNftAddressByIndex(userIdItemIndex) as Address;
 
@@ -235,12 +214,10 @@ describe('Test Trc404 Wallet transferFT,include 4 branches ,and change owned_nft
             success: true,
         });
 
-        //check Branch 4 tx
-        // let user1Id2ItemIndex = calculateUseridItemIndex(1n,2n);     
+        //check Branch 4 tx 
         let user1Id2ItemIndex = 2n;
         const nft_item2_adddress = await Collection.getGetNftAddressByIndex(user1Id2ItemIndex) as Address;
-
-        // let user2Id4ItemIndex = calculateUseridItemIndex(2n,4n);       
+    
         let user2Id4ItemIndex = 6n;
         const nft_item4_adddress = await Collection.getGetNftAddressByIndex(user2Id4ItemIndex) as Address;
 
@@ -293,12 +270,10 @@ describe('Test Trc404 Wallet transferFT,include 4 branches ,and change owned_nft
         });
         printTransactionFees(transferFtResult.transactions);
 
-        //check Branch 4 tx
-        // let user1Id2ItemIndex = calculateUseridItemIndex(1n,2n);     
+        //check Branch 4 tx 
         let user1Id2ItemIndex = 7n;
         const nft_item2_adddress = await Collection.getGetNftAddressByIndex(user1Id2ItemIndex) as Address;
-
-        // let user2Id4ItemIndex = calculateUseridItemIndex(2n,4n);       
+   
         let user2Id4ItemIndex = 12n;
         const nft_item4_adddress = await Collection.getGetNftAddressByIndex(user2Id4ItemIndex) as Address;
 
@@ -390,12 +365,10 @@ describe('Test Trc404 Wallet transferFT,transfer 1 FT,transfer 2 FT,transfer 3 F
             success: true,
         });
 
-        //check Branch 4 tx
-        // let user1Id2ItemIndex = calculateUseridItemIndex(1n,2n);     
+        //check Branch 4 tx 
         let user1Id2ItemIndex =1n;  
         const nft_item2_adddress = await Collection.getGetNftAddressByIndex(user1Id2ItemIndex) as Address;
-
-        // let user2Id4ItemIndex = calculateUseridItemIndex(2n,4n);       
+  
         let user2Id4ItemIndex =2n;  
         const nft_item4_adddress = await Collection.getGetNftAddressByIndex(user2Id4ItemIndex) as Address;
 

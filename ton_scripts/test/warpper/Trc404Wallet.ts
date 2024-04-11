@@ -1,24 +1,4 @@
-import {
-    Cell,
-    Slice,
-    Address,
-    Builder,
-    beginCell,
-    ComputeError,
-    TupleItem,
-    TupleReader,
-    Dictionary,
-    contractAddress,
-    ContractProvider,
-    Sender,
-    Contract,
-    ContractABI,
-    ABIType,
-    ABIGetter,
-    ABIReceiver,
-    TupleBuilder,
-    DictionaryValue
-} from '@ton/core';
+import {Cell,Address,ContractProvider,Sender,Contract,TupleBuilder,} from '@ton/core';
 import { SendMessageResult } from '@ton/sandbox';
 
 
