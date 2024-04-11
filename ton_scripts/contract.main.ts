@@ -8,7 +8,7 @@ import {
   invokeChangeFreemintConfigFromTrc404Master, invokeChangeRoyaltyParamsFromTrc404Collection, invokeFreeMintFromTrc404Master,
   invokeWithDrawFromTrc404Master, invokeChangeOwnedNftLimitFromTrc404Collection
 } from "./contract/invokeContract";
-import { calculateUseridItemIndex, waitNextSeqo } from "./utils/helpers";
+import {  waitNextSeqo } from "./utils/helpers";
 import * as dotenv from "dotenv";
 import { sleep } from "./utils/helpers";
 dotenv.config();

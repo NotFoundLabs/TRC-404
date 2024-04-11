@@ -1,4 +1,3 @@
 int owned_nft_limit() asm "5 PUSHINT"; 
-
 int item_index_length() asm "34 PUSHINT";
-int total_userid_item_index_length() asm "54 PUSHINT";
+

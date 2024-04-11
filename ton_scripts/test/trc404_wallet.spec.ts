@@ -25,7 +25,6 @@ import { getInitDeployMasterMsg } from "../contract/initDeployContract";
 import { buildMintFtMsg, buildWithdrawMsg, buildChangeFreemintConfigMsg, buildChangeMasterAdminMsg } from "../message/masterMsg";
 import { buildTransferFtMsg } from "../message/walletMsg";
 import { buildChangeOwnedNftLimitMsg } from "../message/nftCollectionMsg";
-import { calculateUseridItemIndex } from "../utils/helpers";
 
 
 describe('Test Trc404 Wallet transferFT,include 4 branches ,and change owned_nft_limit', () => {

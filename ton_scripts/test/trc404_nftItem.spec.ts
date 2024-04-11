@@ -25,7 +25,6 @@ import { getInitDeployMasterMsg } from "../contract/initDeployContract";
 import { buildMintFtMsg, buildWithdrawMsg, buildChangeFreemintConfigMsg, buildChangeMasterAdminMsg } from "../message/masterMsg";
 import { buildTransferFtMsg } from "../message/walletMsg";
 import { buildTransferNftMsg } from "../message/nftItemMsg";
-import { calculateUseridItemIndex } from "../utils/helpers";
 
 let compliedCodes: {
     erc404_collection_code: Cell, erc404_nft_item_code: Cell,

@@ -3,7 +3,7 @@ import { Address, beginCell, contractAddress, toNano,  internal, fromNano, Cell,
 import {TonClient4, TonClient,WalletContractV4} from "@ton/ton";
 import { compileFunc } from "@ton-community/func-js";
 import { client, getWalletContract } from "./clientAndWallet";
-import { buildOnchainMetadata,item_index_length,userid_prefix_length,total_userid_item_index_length } from "../utils/helpers";
+import { buildOnchainMetadata,item_index_length,userid_prefix_length } from "../utils/helpers";
 
 async function compileFuncFile(name: string) {
     let result = "";

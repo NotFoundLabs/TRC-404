@@ -22,7 +22,6 @@ import {
 } from "@ton/sandbox";
 import { getInitDeployMasterMsg } from "../contract/initDeployContract";
 import { buildMintFtMsg, buildWithdrawMsg, buildChangeFreemintConfigMsg, buildChangeMasterAdminMsg } from "../message/masterMsg";
-import { calculateUseridItemIndex } from "../utils/helpers";
 
 let max_supply = 1000000;
 

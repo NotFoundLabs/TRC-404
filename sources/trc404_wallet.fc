@@ -33,7 +33,7 @@ global cell  Storage::Owned_nft_dict;
 global int   Storage::Owned_nft_number;
 global int   Storage::Owned_nft_limit;
 global int   Storage::Pending_reduce_jetton_balance;
-global cell  Storage::Pending_burn_nft_queue;
+global cell  Storage::Pending_transfer_nft_queue;
 
 () load_data() impure inline {
     slice ds = get_data().begin_parse();
@@ -47,7 +47,7 @@ global cell  Storage::Pending_burn_nft_queue;
     Storage::Owned_nft_number = ds~load_int(item_index_length() + 1);    ;;owned_nft_number，allow negative number, for the case: A transfer B 1NFT,B trasfer C 1 NFT
     Storage::Owned_nft_limit = ds~load_uint(item_index_length());       ;;owned_nft_limit
     Storage::Pending_reduce_jetton_balance = ds~load_coins();                     ;; Pending_reduce_jetton_balance
-    Storage::Pending_burn_nft_queue = ds~load_dict();                             ;; Pending_burn_nft_queue
+    Storage::Pending_transfer_nft_queue = ds~load_dict();                             ;; Pending_transfer_nft_queue
 
 }
 
@@ -63,7 +63,7 @@ global cell  Storage::Pending_burn_nft_queue;
         .store_int(Storage::Owned_nft_number, item_index_length() + 1)
         .store_uint(Storage::Owned_nft_limit, item_index_length())
         .store_coins(Storage::Pending_reduce_jetton_balance)
-        .store_dict(Storage::Pending_burn_nft_queue)
+        .store_dict(Storage::Pending_transfer_nft_queue)
         .end_cell());
 }
 
@@ -144,7 +144,6 @@ global cell  Storage::Pending_burn_nft_queue;
     msg_value = msg_value - min_storageFee();
 
     if (op == op::transfer()) {
-        ;; outgoing transfer
         var (query_id, jetton_amount, to_address, response_address, custom_payload, forward_ton_amount, forward_payload) = load_transferMsg(in_msg_body);
 
         var old_jetton_balance = Storage::Jetton_balance;
@@ -172,13 +171,19 @@ global cell  Storage::Pending_burn_nft_queue;
 
         if (need_to_burn_nft_number > 0) {
             int miniKey = 0;
-            repeat (need_to_burn_nft_number) {
-                (int item_index, slice value, int flag) = Storage::Owned_nft_dict.udict_get_next?(64, miniKey);
-                throw_unless(500, flag);
-                Storage::Owned_nft_dict~udict_set(64, item_index, "0"); ;; "0" means pending delete,"" means normal
-                miniKey = item_index;
-
-                sendMsg(bounce::true(), sendMode::NONE(), Storage::Nft_collection_address, reduce_nft_supply_fee(), reduceNftSupplyMsg(query_id, item_index, Storage::Owner_address, response_address));
+            repeat( need_to_burn_nft_number ){  
+                int flag = 0;    
+                ;;find a min NFT index with normal status     
+                do {           
+                   (int item_index,slice value,flag) =  Storage::Owned_nft_dict.udict_get_next?(64,miniKey); 
+                   miniKey = item_index;                 
+                } until (  ~ equal_slices(value,"0") | ~ flag) ;
+              
+                if ( flag ){  
+                 Storage::Owned_nft_dict~udict_set(64,miniKey, "0"); ;; "0" means pending delete,"" means normal         
+                 sendMsg(bounce::true(),sendMode::NONE(),Storage::Nft_collection_address,reduce_nft_supply_fee() ,
+                        reduceNftSupplyMsg(query_id,miniKey,Storage::Owner_address,response_address));
+                } 
             }
         }
 
@@ -190,7 +195,6 @@ global cell  Storage::Pending_burn_nft_queue;
     }
 
     if (op == op::internal_transfer()) {
-        ;; incoming transfer
         var (query_id, jetton_amount, from_address, response_address, forward_ton_amount, forward_payload) = load_internalTransferMsg(in_msg_body);
 
         if (jetton_amount == 0) {
@@ -211,9 +215,8 @@ global cell  Storage::Pending_burn_nft_queue;
         var (query_id, item_index, responese_address) = load_cbBurnNftMsg(in_msg_body);
 
         var (_, nft_item_address) = getNftItem_InitStateAndAddress(item_index, Storage::Nft_collection_address, Storage::Nft_item_code);
-        throw_unless(708, equal_slices(nft_item_address, sender_address)); ;;must from the right nft_item contract
+        throw_unless(708, equal_slices(nft_item_address, sender_address)); 
 
-        ;;case1 : normal transfer FT, case2: transfer NFT,but receiver owned_nft_number >= owned_nft_limit,so need to burn this nft
         (slice value, int flag) = Storage::Owned_nft_dict~udict_delete_get?(64, item_index);
 
         sendMsg(bounce::false(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(), responese_address, 0, excessesMsg(query_id));save_data();
@@ -227,14 +230,14 @@ global cell  Storage::Pending_burn_nft_queue;
         var (_, from_wallet_address) = getJettonWallet_InitStateAndAddress(old_owner_address, Storage::Jetton_master_address, Storage::Jetton_wallet_code, Storage::Nft_item_code, Storage::Nft_collection_address);
         throw_unless(708, equal_slices(nft_item_address, sender_address) | equal_slices(from_wallet_address, sender_address));
 
-        (slice value, int flag) = Storage::Pending_burn_nft_queue~udict_delete_get?(64, item_index);
+        (slice value, int flag) = Storage::Pending_transfer_nft_queue~udict_delete_get?(64, item_index);
         if (~ flag) {
-            ;; if delete failed,means this NFT's status is normal, add this NFT index to  Storage::Owned_nft_dict
             if (Storage::Owned_nft_number < Storage::Owned_nft_limit) {
                 Storage::Owned_nft_dict~udict_set(64, item_index, ""); ;;store nft-item index as key,and "" as value
                 Storage::Owned_nft_number = Storage::Owned_nft_number + 1;
             } else {
                 msg_value = msg_value - transfer_nft_burn_nft_fee();
+                Storage::Owned_nft_dict~udict_set(64,item_index, "0"); ;;set this item_index's status to "0"(pending_delete)
                 sendMsg(bounce::true(), sendMode::NONE(), Storage::Nft_collection_address, transfer_nft_burn_nft_fee(), reduceNftSupplyMsg(query_id, item_index, Storage::Owner_address, response_destination));
             }
         } else {
@@ -267,17 +270,14 @@ global cell  Storage::Pending_burn_nft_queue;
         (slice value, int flag) = Storage::Owned_nft_dict.udict_get?(64, item_index);
 
         if (flag == 0) {
-            ;;if this nft doesn't exist,means it hasn't been deployed,but it will be deployed later
-            Storage::Pending_burn_nft_queue~udict_set(64, item_index, ""); ;;store nft-item index as key,and "" as value
+            Storage::Pending_transfer_nft_queue~udict_set(64, item_index, ""); 
             updateOwnedNftNumberAndJettonBalance(msg_value, reduce_and_add_amount, to_address, query_id, item_index, response_destination);
         } else {
             if (~ value.slice_empty?() & equal_slices(value, "0")) {
-                ;; if nft's value is "0", that means this NFT is pending delete,exit
                 sendMsg(bounce::false(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),
                     response_destination, 0,
                     commentMsg("This NFT has been burned"));
             } else {
-                ;; if nft's value is "", means this NFT's status is normal
                 (slice value2, int flag2) = Storage::Owned_nft_dict~udict_delete_get?(64, item_index);
                 throw_unless(505, flag2);
                 updateOwnedNftNumberAndJettonBalance(msg_value, reduce_and_add_amount, to_address, query_id, item_index, response_destination);
@@ -312,5 +312,5 @@ global cell  Storage::Pending_burn_nft_queue;
         ds~load_int(item_index_length() + 1), ;;owned_nft_number
         ds~load_uint(item_index_length()), ;;owned_nft_limit
         ds~load_coins(), ;; pending_reduce_ jetton_balance
-        ds~load_dict());                      ;; pending_burn_nft_queue
+        ds~load_dict());                      ;; Pending_transfer_nft_queue
 }

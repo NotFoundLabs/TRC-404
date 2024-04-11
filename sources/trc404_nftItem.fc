@@ -103,7 +103,7 @@ int reduce_one_ft_and_nft_gas()       asm "100000000 PUSHINT";
 
       if ( forward_amount > 0 ) {
          send_msg(new_owner, forward_amount, op::ownership_assigned(), query_id,
-                  begin_cell().store_slice(owner_address).store_slice(forward_payload), 1);  ;; paying fees, revert on errors
+                  begin_cell().store_slice(owner_address).store_slice(forward_payload), 1);  
       }
       
       sendMsg(bounce::true(),sendMode::NONE(),collection_address,min_request_transfer_one_ft_and_nft_gas(),requestTransferOneFtAndNftMsg(query_id,index,owner_address,new_owner,response_address));
@@ -111,7 +111,7 @@ int reduce_one_ft_and_nft_gas()       asm "100000000 PUSHINT";
       int need_response = response_address.preload_uint(2) != 0; ;; if NOT addr_none: 00
        if (need_response) {
         force_chain(response_address);
-        send_msg(response_address, rest_amount , op::excesses(), query_id, null(), 1); ;; paying fees, revert on errors
+        send_msg(response_address, rest_amount , op::excesses(), query_id, null(), 1); 
       }
       
       store_data(index, collection_address, new_owner, nft_content);

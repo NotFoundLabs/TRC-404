@@ -168,6 +168,6 @@ int op::change_owned_nft_limit() asm "0xba5f8281 PUSHINT";
 
 (int,int) load_ChangeOwnedNftLimitMsg(slice in_msg_body){
      int query_id = in_msg_body~load_uint(64);
-     int owned_nft_limit =  in_msg_body~load_uint(total_userid_item_index_length());
+     int owned_nft_limit =  in_msg_body~load_uint(item_index_length());
      return (query_id,owned_nft_limit);
 }

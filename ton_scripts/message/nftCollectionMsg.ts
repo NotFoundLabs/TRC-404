@@ -1,6 +1,6 @@
 
 import { Address, beginCell, contractAddress, toNano, internal, fromNano, Cell, OpenedContract, Dictionary } from "@ton/core";
-import { total_userid_item_index_length } from "../utils/helpers";
+import { item_index_length } from "../utils/helpers";
 
 export function buildChangeRoyaltyParamsMsg(numerator: number, denominator: number, owner_address: Address) {
     
@@ -24,7 +24,7 @@ export function buildChangeOwnedNftLimitMsg(owned_nft_limit: number) {
 
     return beginCell().storeUint(op_change_owned_nft_limit, 32)  //op_code
         .storeUint(0, 64)  //query_id
-        .storeUint(owned_nft_limit,total_userid_item_index_length)      //owned_nft_limit
+        .storeUint(owned_nft_limit,item_index_length)      //owned_nft_limit
         .endCell();
 }
 
