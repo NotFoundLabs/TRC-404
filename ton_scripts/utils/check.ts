@@ -1,14 +1,9 @@
 import { getTrc404CollectionAndMasterAddress, getAllCompileCode } from "../contract/compileContract";
-import { getWalletContract, user1, user2 } from "../contract/clientAndWallet";
-import { WalletContractV4 } from "@ton/ton";
-import { OpenedContract, fromNano, toNano, Address, Cell } from "@ton/core";
+import { toNano, Address, Cell } from "@ton/core";
 import { Trc404NftCollection } from "../test/warpper/Trc404NftCollection";
-import {
-    Trc404Master, checkMintFtTX
-    //, checkMintFtTXFirstTime 
-} from "../test/warpper/Trc404Master";
+import { Trc404Master, checkMintFtTX } from "../test/warpper/Trc404Master";
 import { Trc404Wallet } from "../test/warpper/Trc404Wallet";
-import { owned_nft_limit, freemint_max_supply, freemint_price } from "../contract/compileContract";
+import { owned_nft_limit } from "../contract/compileContract";
 
 
 import {
@@ -16,9 +11,6 @@ import {
     SandboxContract,
     TreasuryContract,
     printTransactionFees,
-    prettyLogTransactions,
-    RemoteBlockchainStorage,
-    wrapTonClient4ForRemote,
 } from "@ton/sandbox";
 import { getInitDeployMasterMsg } from "../contract/initDeployContract";
 
@@ -77,10 +69,7 @@ export async function checkMintFt(mintAmount: number, gasFee: number, sender: Sa
     userAddress: Address, testNftItemIndex: bigint, msg: Cell, is_firstTime: boolean) {
     const user_trc404_Wallet = await Master.getGetWalletAddress(userAddress);
     const nft_item_adddress = await Collection.getGetNftAddressByIndex(testNftItemIndex) as Address;
-
-    //console.log("nft_item_adddress:",nft_item_adddress);
     const totalSupplyBefore = (await Master.getGetJettonData()).total_supply;
-    //console.log("totalSupplyBefore:",totalSupplyBefore);
 
     //check if there is a action occur error and bounced
     let walletJettonBalanceBefore = 0n;
@@ -92,29 +81,22 @@ export async function checkMintFt(mintAmount: number, gasFee: number, sender: Sa
         mintFfResult = await Master.send(sender.getSender(), { value: toNano(gasFee) }, msg);
 
         printTransactionFees(mintFfResult.transactions);
-        //checkMintFtTXFirstTime(mintFfResult, sender.address, Master.address, user_trc404_Wallet, Collection.address, nft_item_adddress);
         checkMintFtTX(mintFfResult, sender.address, Master.address, user_trc404_Wallet, Collection.address, nft_item_adddress);
     } else {
         walletJettonBalanceBefore = (await Wallet.getWalletData()).jetton_balance;
         walletOwnedNftNumberBefore = (await Wallet.getWalletData()).owned_nft_number;
 
         mintFfResult = await Master.send(sender.getSender(), { value: toNano(gasFee) }, msg);
-
         printTransactionFees(mintFfResult.transactions);
-
         checkMintFtTX(mintFfResult, sender.address, Master.address, user_trc404_Wallet, Collection.address, nft_item_adddress);
     }
 
     console.log("walletOwnedNftNumberBefore:", walletOwnedNftNumberBefore);
 
     const totalSupplyAfter = (await Master.getGetJettonData()).total_supply;
-    //console.log("totalSupplyAfter:",totalSupplyAfter);
     expect(totalSupplyBefore + toNano(mintAmount)).toEqual(totalSupplyAfter);
 
-    //check user's trc404 wallet's balance,owned_nft_number and owned_nft_dict
-
     let wallet_DataRes = await Wallet.getWalletData();
-    // jetton_balance,owner_address,jetton_master_address,jetton_wallet_code,nft_collection_address,owned_nft_dict,owned_nft_number
     expect(wallet_DataRes.jetton_balance).toEqual(walletJettonBalanceBefore + toNano(mintAmount));
     expect(wallet_DataRes.owner_address.equals(userAddress));
 

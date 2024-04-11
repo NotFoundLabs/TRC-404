@@ -80,7 +80,7 @@ export async function getTrc404WalletAddressAndInit(user_client_wallet: Address,
         .storeInt(0,item_index_length + 1)   //owned_nft_number
         .storeUint(owned_nft_limit,item_index_length)   //Owned_nft_limit
         .storeCoins(0) //;; pending_reduce_jetton_balance ,
-        .storeDict(Dictionary.empty())    //pending_burn_nft_queue
+        .storeDict(Dictionary.empty())    //pending_transfer_nft_queue
         .endCell();
 
     let state_init = { code: jetton_wallet_code, data: wallet_init_data };

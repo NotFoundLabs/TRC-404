@@ -11,11 +11,11 @@
             .store_ref(jetton_wallet_code)
             .store_ref(nft_item_code)
             .store_slice(nft_collection_address)
-            .store_dict(new_dict())                                       ;; owned_nft_list
+            .store_dict(new_dict())                                       ;;owned_nft_list
             .store_int(0,item_index_length() + 1)                         ;;owned_nft_number,allow negative number
-            .store_uint(owned_nft_limit(),item_index_length())            ;; owned_nft_limit
+            .store_uint(owned_nft_limit(),item_index_length())            ;;owned_nft_limit
             .store_coins(0)                                               ;;pending_reduce_jetton_balance
-            .store_dict(new_dict())                                       ;;pending_burn_nft_queue
+            .store_dict(new_dict())                                       ;;pending_transfer_nft_queue
             .end_cell();
         
         cell state_init = begin_cell()

@@ -184,10 +184,10 @@ export class Trc404Wallet implements Contract {
         let owned_nft_number = source.readBigNumber();
         let owned_nft_limit = source.readBigNumber();
         let pending_reduce_jetton_balance = source.readBigNumber();
-        let pending_burn_nft_queue = source.readCellOpt();
+        let pending_transfer_nft_queue = source.readCellOpt();
 
         return { jetton_balance, owner_address, jetton_master_address, jetton_wallet_code,nft_item_code ,
                 nft_collection_address, owned_nft_dict, owned_nft_number,
-                owned_nft_limit,pending_reduce_jetton_balance,pending_burn_nft_queue };
+                owned_nft_limit,pending_reduce_jetton_balance,pending_transfer_nft_queue };
     }
 }

@@ -1,6 +1,6 @@
 import { Sha256 } from "@aws-crypto/sha256-js";
 import { Dictionary, beginCell, Cell, OpenedContract, Address } from "@ton/core";
-import { TonClient4, TonClient, WalletContractV4 } from "@ton/ton";
+import {  WalletContractV4 } from "@ton/ton";
 
 const ONCHAIN_CONTENT_PREFIX = 0x00;
 const SNAKE_PREFIX = 0x00;
