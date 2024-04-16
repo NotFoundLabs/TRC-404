@@ -196,8 +196,7 @@ global cell  Storage::Pending_transfer_nft_queue;
         var (query_id, jetton_amount, from_address, response_address, forward_ton_amount, forward_payload) = load_internalTransferMsg(in_msg_body);
 
         if (jetton_amount == 0) {
-            sendMsg(bounce::false(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),
-                response_address, 0, excessesMsg(query_id));
+            sendMsg(bounce::false(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),response_address, 0, excessesMsg(query_id));
             return ();
         }
 
@@ -226,7 +225,7 @@ global cell  Storage::Pending_transfer_nft_queue;
 
         var (_, nft_item_address) = getNftItem_InitStateAndAddress(item_index, Storage::Nft_collection_address, Storage::Nft_item_code);
         var (_, from_wallet_address) = getJettonWallet_InitStateAndAddress(old_owner_address, Storage::Jetton_master_address, Storage::Jetton_wallet_code, Storage::Nft_item_code, Storage::Nft_collection_address);
-        throw_unless(708, equal_slices(nft_item_address, sender_address) | equal_slices(from_wallet_address, sender_address));
+        throw_unless(709, equal_slices(nft_item_address, sender_address) | equal_slices(from_wallet_address, sender_address));
 
         (slice value, int flag) = Storage::Pending_transfer_nft_queue~udict_delete_get?(64, item_index);
         if (~ flag) {
@@ -247,6 +246,7 @@ global cell  Storage::Pending_transfer_nft_queue;
         int add_number = Storage::Jetton_balance + nft_represent_ft_amount;
         if (add_number >= Storage::Pending_reduce_jetton_balance) {
             Storage::Jetton_balance = add_number - Storage::Pending_reduce_jetton_balance;
+            Storage::Pending_reduce_jetton_balance = 0;
             throw_unless(709, Storage::Jetton_balance >= 0);
         }  else {
             Storage::Pending_reduce_jetton_balance = Storage::Pending_reduce_jetton_balance - add_number;
