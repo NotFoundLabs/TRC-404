@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import { Address, beginCell, contractAddress, toNano, Cell, Dictionary } from "@ton/core";
+import { Address, beginCell, contractAddress, Cell, Dictionary } from "@ton/core";
 import { compileFunc } from "@ton-community/func-js";
 import { client } from "./clientAndWallet";
 import { buildOnchainMetadata, item_index_length } from "../utils/helpers";

@@ -1,4 +1,4 @@
-import { Address, beginCell, contractAddress, toNano,  internal, fromNano, Cell } from "@ton/core";
+import { Address, beginCell, toNano,  internal, fromNano, Cell } from "@ton/core";
 import { getWalletContract } from "./clientAndWallet";
 
 

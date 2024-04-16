@@ -1,4 +1,4 @@
-import {  TonClient4, TonClient, WalletContractV4,  } from "@ton/ton";
+import {  TonClient4, WalletContractV4,  } from "@ton/ton";
 import { mnemonicToPrivateKey } from "@ton/crypto";
 
 

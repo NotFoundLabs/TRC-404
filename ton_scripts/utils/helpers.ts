@@ -1,5 +1,5 @@
 import { Sha256 } from "@aws-crypto/sha256-js";
-import { Dictionary, beginCell, Cell, OpenedContract, Address } from "@ton/core";
+import { Dictionary, beginCell, Cell, OpenedContract } from "@ton/core";
 import {  WalletContractV4 } from "@ton/ton";
 
 const ONCHAIN_CONTENT_PREFIX = 0x00;

@@ -1,6 +1,5 @@
-import { Address, beginCell, contractAddress, toNano, internal, fromNano, Cell, OpenedContract, Dictionary } from "@ton/core";
-import { getWalletContract } from "./clientAndWallet";
-import {TonClient4, TonClient,WalletContractV4} from "@ton/ton";
+import { Address,  toNano, internal, fromNano, OpenedContract } from "@ton/core";
+import {WalletContractV4} from "@ton/ton";
 import { CompiledCodeList, getTrc404WalletAddressAndInit, getTrc404NftItemAddressAndInit } from "./compileContract";
 import { buildMintFtMsg } from "../message/masterMsg";
 import { buildTransferFtMsg } from "../message/walletMsg"; 
