@@ -15,33 +15,6 @@ int op::mint() asm "0x227d62e9 PUSHINT";
     return ( query_id, to_address, jetton_amount);  
 }
 
-int op::change_admin() asm "0xb6801836 PUSHINT";
-
-(int, slice) load_ChangeAdminMsg(slice in_msg_body){
-    int query_id = in_msg_body~load_uint(64);
-    slice new_admin_address = in_msg_body~load_msg_addr();
-    return (query_id, new_admin_address);  
-}
-
-int op::change_freemint_config() asm "0x63e7f86a PUSHINT";
-
-(int, int,int , int ) load_ChangeFreemintConfigMsg(slice in_msg_body){
-    int query_id = in_msg_body~load_uint(64);
-    int freemint_flag =  in_msg_body~load_int(2); 
-    int freemint_max_supply =  in_msg_body~load_coins(); ;
-    int freemint_price =  in_msg_body~load_coins(); 
-    return (query_id,freemint_flag, freemint_max_supply,freemint_price);  
-}
-
-int op::withdraw() asm "0xcb03bfaf PUSHINT";
-
-(int,int, slice ) load_WithdrawMsg(slice in_msg_body){
-    int query_id = in_msg_body~load_uint(64);
-    int withdraw_amount =  in_msg_body~load_coins(); 
-    slice to_address =  in_msg_body~load_msg_addr(); 
-    return (query_id,withdraw_amount, to_address);  
-}
-
 
 
 

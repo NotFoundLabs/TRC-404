@@ -4,7 +4,6 @@ import "@ton/test-utils";
 import { Trc404NftCollection } from "./warpper/Trc404NftCollection";
 import { deployAndCheckCollectionAndMasterContract } from "../utils/check";
 import {Blockchain,SandboxContract,TreasuryContract,} from "@ton/sandbox";
-import { buildWithdrawMsg } from "../message/masterMsg";
 import { buildChangeRoyaltyParamsMsg } from "../message/nftCollectionMsg";
 
 
@@ -36,17 +35,6 @@ describe('Test Trc404 NftCollection change_royalty_params,get_royalty_params  ',
         });
     })
 
-    it('should not withdraw amount when sender is not admin', async () => {
-        let gasFee = 0.01; //0.15 ton 
-        let user1 = await blockchain.treasury("user1");
-        let msg = buildWithdrawMsg(100, user1.address);
-        const withdrawResult = await Collection.send(user1.getSender(), { value: toNano(gasFee) }, msg);
-        expect(withdrawResult.transactions).toHaveTransaction({
-            from: user1.address,
-            to: Collection.address,
-            success: false,
-        });
-    })
 
     //  //**** Should be correct cases  */
     it('should  change_royalty_params when sender is  admin', async () => {

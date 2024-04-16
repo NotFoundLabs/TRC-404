@@ -2,9 +2,9 @@ import { Address, beginCell, contractAddress, toNano, internal, fromNano, Cell, 
 import { getWalletContract } from "./clientAndWallet";
 import {TonClient4, TonClient,WalletContractV4} from "@ton/ton";
 import { CompiledCodeList, getTrc404WalletAddressAndInit, getTrc404NftItemAddressAndInit } from "./compileContract";
-import { buildMintFtMsg,buildWithdrawMsg,buildChangeMasterAdminMsg,buildChangeFreemintConfigMsg } from "../message/masterMsg";
+import { buildMintFtMsg } from "../message/masterMsg";
 import { buildTransferFtMsg } from "../message/walletMsg"; 
-import { buildChangeOwnedNftLimitMsg, buildChangeRoyaltyParamsMsg } from "../message/nftCollectionMsg";
+import {  buildChangeRoyaltyParamsMsg } from "../message/nftCollectionMsg";
 import { buildTransferNftMsg } from "../message/nftItemMsg";
 
 export async function invokeMintFromTrc404Master(user_wallet: OpenedContract<WalletContractV4>, secretKey: Buffer, erc404_master_address: Address, to_address: Address, jetton_amount: number, amountStr: number) {
@@ -115,34 +115,6 @@ export async function invokeTransferNFTFromTrc404NftItem(input_seqo:number,user_
     return seqno;
 }
 
-export async function invokeChangeFreemintConfigFromTrc404Master(user_wallet: OpenedContract<WalletContractV4>, secretKey: Buffer, 
-    erc404_master_address: Address, freemint_flag: number, freemint_max_supply: number, freemint_price: number, msg_value_str: string) {
-    let msgValueAmount = toNano(msg_value_str);
-    let seqno: number = await user_wallet.getSeqno();
-    let balance: bigint = await user_wallet.getBalance();
-
-    // ========================================
-    console.log("================ " + seqno + " ======================== ")
-    console.log("Current sender client wallet balance: ", fromNano(balance).toString(), "💎TON");
-    console.log("Invoke change Freemint config function of Trc404 master contract:", erc404_master_address);
-    console.log("new_freemint_flag:", freemint_flag, ", freemint_max_supply ", freemint_max_supply, ", freemint_price: ", freemint_price);
-
-    //change Freemint config 
-    await user_wallet.sendTransfer({
-        seqno,
-        secretKey,
-        messages: [
-            internal({
-                to: erc404_master_address,
-                value: msgValueAmount,
-                bounce: true,
-                body: buildChangeFreemintConfigMsg(freemint_flag,freemint_max_supply,freemint_price),
-            }),
-        ],
-    });
-
-    return seqno;
-}
 
 
 export async function invokeChangeRoyaltyParamsFromTrc404Collection(user_wallet: OpenedContract<WalletContractV4>, secretKey: Buffer,
@@ -175,92 +147,5 @@ export async function invokeChangeRoyaltyParamsFromTrc404Collection(user_wallet:
 }
 
 
-export async function invokeChangeOwnedNftLimitFromTrc404Collection(user_wallet: OpenedContract<WalletContractV4>, secretKey: Buffer,
-    erc404_collection_address: Address, owned_nft_limit: number, msg_value_str: string) {
-    let msgValueAmount = toNano(msg_value_str);
-    let seqno: number = await user_wallet.getSeqno();
-    let balance: bigint = await user_wallet.getBalance();
 
-    // ========================================
-    console.log("================ " + seqno + " ======================== ")
-    console.log("Current sender client wallet balance: ", fromNano(balance).toString(), "💎TON");
-    console.log("Invoke change owned nft limit function of Trc404 collection contract:", erc404_collection_address);
-    console.log("owned_nft_limit:", owned_nft_limit);
-
-    //change owned_nft_limit
-    await user_wallet.sendTransfer({
-        seqno,
-        secretKey,
-        messages: [
-            internal({
-                to: erc404_collection_address,
-                value: msgValueAmount,
-                bounce: true,
-                body: buildChangeOwnedNftLimitMsg(owned_nft_limit),
-            }),
-        ],
-    });
-
-    return seqno;
-}
-
-
-export async function invokeFreeMintFromTrc404Master(user_wallet: OpenedContract<WalletContractV4>, secretKey: Buffer,
-    erc404_master_address: Address, msg_value_str: string) {
-    let msgValueAmount = toNano(msg_value_str);
-    let seqno: number = await user_wallet.getSeqno();
-    let balance: bigint = await user_wallet.getBalance();
-
-    // ========================================
-    console.log("================ " + seqno + " ======================== ")
-    console.log("Current sender client wallet balance: ", fromNano(balance).toString(), "💎TON");
-    console.log("Invoke free Mint of Trc404 master contract:", erc404_master_address);
-    console.log("msg_value_str:", msg_value_str);
-
-    await user_wallet.sendTransfer({
-        seqno,
-        secretKey,
-        messages: [
-            internal({
-                to: erc404_master_address,
-                value: msgValueAmount,
-                bounce: true,
-                //body: packed, //body is null
-            }),
-        ],
-    });
-
-    return seqno;
-
-    }
-
-
-export async function invokeWithDrawFromTrc404Master(user_wallet: OpenedContract<WalletContractV4>, secretKey: Buffer,
-    erc404_master_address: Address, withdraw_amount:number,to_address:Address, msg_value_str: string) {
-    let msgValueAmount = toNano(msg_value_str);
-    let seqno: number = await user_wallet.getSeqno();
-    let balance: bigint = await user_wallet.getBalance();
-
-    // ========================================
-    console.log("================ " + seqno + " ======================== ")
-    console.log("Current sender client wallet balance: ", fromNano(balance).toString(), "💎TON");
-    console.log("Invoke withdraw function of Trc404 master contract:", erc404_master_address);
-    console.log("withdraw_amount:", withdraw_amount, ", to_address ", to_address);
-
-    //withdraw
-    await user_wallet.sendTransfer({
-        seqno,
-        secretKey,
-        messages: [
-            internal({
-                to: erc404_master_address,
-                value: msgValueAmount,
-                bounce: true,
-                body: buildWithdrawMsg(withdraw_amount,to_address),
-            }),
-        ],
-    });
-
-    return seqno;
-}
 

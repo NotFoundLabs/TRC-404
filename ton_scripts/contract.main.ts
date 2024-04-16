@@ -1,5 +1,4 @@
-import { Address } from "@ton/core";
-import { getWalletContract, user1, user2, user3 } from "./contract/clientAndWallet";
+import { getWalletContract, user1, user2 } from "./contract/clientAndWallet";
 import { getTrc404CollectionAndMasterAddress, getAllCompileCode } from "./contract/compileContract";
 import { initDeployTrc404Collection, initDeployTrc404Master } from "./contract/initDeployContract";
 

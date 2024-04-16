@@ -7,8 +7,7 @@ import { Trc404NftCollection } from "./warpper/Trc404NftCollection";
 import { deployAndCheckCollectionAndMasterContract, checkMintFt } from "../utils/check";
 import {Blockchain,SandboxContract,TreasuryContract,printTransactionFees,} from "@ton/sandbox";
 import { buildMintFtMsg} from "../message/masterMsg";
-import { buildTransferFtMsg } from "../message/walletMsg";
-import { buildChangeOwnedNftLimitMsg } from "../message/nftCollectionMsg";
+import { buildChangeOwnedNftLimitMsg, buildTransferFtMsg } from "../message/walletMsg";
 
 
 describe('Test Trc404 Wallet transferFT,include 4 branches ,and change owned_nft_limit', () => {

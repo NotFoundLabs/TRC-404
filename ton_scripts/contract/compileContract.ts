@@ -29,29 +29,6 @@ export type CompiledCodeList = {
 };
 
 export let owned_nft_limit = 5;
-export let freemint_current_supply = 0
-export let freemint_max_supply = 5000;
-export let freemint_price = 1;             //1 TON ,for test script need to change 1 TON
-
-export async function getFixPriceSaleContractInit(admin_address: Address, nft_address: Address,) {
-    let fix_price_sale_code = Cell.fromBase64(await compileFuncFile("nft-fixprice-sale"));
-
-    let fees_cell = beginCell().storeCoins(1)       //marketplace_fee,
-        .storeAddress(admin_address)   //marketplace_fee_address
-        .storeAddress(admin_address)    //royalty_address
-        .storeCoins(1)                  //royalty_amount
-        .endCell();
-
-    let fix_price_sale_init_data = beginCell()
-        .storeAddress(admin_address)  //marketplace_address
-        .storeAddress(nft_address)  //marketplace_address
-        .storeCoins(toNano(1))     // full_price
-        .storeRef(fees_cell)      // fees_cell
-        .endCell();
-
-    let fix_price_sale_init = { code: fix_price_sale_code, data: fix_price_sale_init_data };
-    return fix_price_sale_init;
-}
 
 export async function getAllCompileCode() {
     let erc404_collection_code = Cell.fromBase64(await compileFuncFile("trc404_nftCollection"));
