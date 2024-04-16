@@ -14,7 +14,6 @@ int max_supply()    asm "1000000 PUSHINT";
 int mint_nft_gas()       asm "13000000 PUSHINT";   
 int mint_nft_unit_gas()   asm "6100000 PUSHINT";   
 int deploy_nft_item_gas()             asm "43000000 PUSHINT"; 
-int min_gas()       asm  "130000000 PUSHINT";    
 
 (int,slice,int, cell,cell, cell,cell,int,slice) load_data() inline {
   var ds = get_data().begin_parse();

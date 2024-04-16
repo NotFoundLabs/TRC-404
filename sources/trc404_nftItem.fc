@@ -10,11 +10,7 @@
 
 int min_tons_for_storage()                    asm "166000000 PUSHINT"; 
 int min_request_transfer_one_ft_and_nft_gas() asm "150000000 PUSHINT";  
-int commentFee()                asm  "3000000 PUSHINT";   
 int deploy_gas_consumption()    asm "15800000 PUSHINT";   
-int add_one_ft_and_nft_gas()   asm "18000000 PUSHINT";   
-int recieve_transfer_nft_item_gas()    asm "16000000 PUSHINT";  
-int reduce_one_ft_and_nft_gas()       asm "100000000 PUSHINT"; 
 
 
 (int, int, slice, slice, cell) load_data() {

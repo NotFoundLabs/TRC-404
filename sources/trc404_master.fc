@@ -9,11 +9,6 @@
 #include "./utils/const.fc";
 
 int max_supply()     asm "1000000000000000 PUSHINT"; ;;1 millon
-
-int one_ton()        asm "1000000000 PUSHINT"; ;;1 ton 
-int mint_one_ft_gas()       asm  "160000000 PUSHINT";   
-int mint_multiple_ft_gas()       asm  "125000000 PUSHINT";    
-int max_owned_nft_limit()   asm "10 PUSHINT"; 
 int notify_fee() asm    "1000000 PUSHINT"; 
 
 (int, slice,slice, cell, cell,cell,int) load_data() inline {
