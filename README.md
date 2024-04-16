@@ -4,7 +4,13 @@ Fully compatible with TON ecosystem(wallet, NFT market, DEX).
 Official website: https://trc-404.xyz  
 
 
-## Test
+## Install  
+npm install 
+
+## Compile smart contract 
+npm run build  
+
+## Test 
 npm run test
 
 ## Run on Testnet
