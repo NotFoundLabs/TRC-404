@@ -5,7 +5,6 @@
 #include "./message/wallet_message.fc";
 #include "./message/nftCollection_message.fc";
 #include "./init/wallet_init.fc";
-#include "./utils/string.fc";
 #include "./utils/const.fc";
 
 int max_supply()     asm "1000000000000000 PUSHINT"; ;;1 millon

@@ -1,5 +1,4 @@
 #include "./utils/stdlib.fc";
-#include "./utils/string.fc";
 #include "./utils/const.fc";
 #include "./utils/sendMessage.fc";
 #include "./message/common_message.fc";
@@ -74,7 +73,6 @@ global cell  Storage::Pending_transfer_nft_queue;
     int new_nft_balance = new_jetton_balance / min_unit();
     int need_to_add_nft_number = new_nft_balance - old_nft_balance;
 
-    ;;calculate the real new_nft_number according current_nft_balance and owned_nft_limit
     if (Storage::Owned_nft_number >= Storage::Owned_nft_limit) {
         need_to_add_nft_number = 0;
     } else {
@@ -83,11 +81,10 @@ global cell  Storage::Pending_transfer_nft_queue;
         }
     }
 
-    ;;add the jetton balance that no need to mint NFT first
     if (need_to_add_nft_number <= 0) {
         Storage::Jetton_balance = new_jetton_balance;
     } else {
-        ;;Notice:Jetton_balance amount might less than original jetton amount
+        ;;Notice:jetton_balance amount might less than original jetton_balance  amount
         Storage::Jetton_balance = new_jetton_balance - need_to_add_nft_number * min_unit(); 
     }
 
@@ -98,7 +95,6 @@ global cell  Storage::Pending_transfer_nft_queue;
         sendMsg(bounce::false(), sendMode::PAY_GAS_SEPARATELY(), Storage::Owner_address, forward_ton_amount, transferNotificationMsg(query_id, jetton_amount, from_address, forward_payload));
     }
 
-    ;;try to execute add jetton balance that need to mint NFT,only after minted one NFT can add  FT
     if (need_to_add_nft_number > 0) {
         int counter = 0;
         msg_value = msg_value - need_add_nft_supply_action_fee();
@@ -113,7 +109,7 @@ global cell  Storage::Pending_transfer_nft_queue;
 
 () updateOwnedNftNumberAndJettonBalance(int msg_value, int nft_represent_ft_amount, slice to_address, int query_id, int item_index, slice response_address) impure inline_ref {
     Storage::Owned_nft_number = Storage::Owned_nft_number - 1;
-    ;;try to reduce jetton_balance, if result is negative , add Pending_reduce_jetton_balance by 1 
+    ;;try to reduce jetton_balance, if result is negative , add Pending_reduce_jetton_balance by nft_represent_ft_amount
     int result = Storage::Jetton_balance - nft_represent_ft_amount;
     if (result < 0) {
         Storage::Pending_reduce_jetton_balance = Storage::Pending_reduce_jetton_balance + nft_represent_ft_amount;

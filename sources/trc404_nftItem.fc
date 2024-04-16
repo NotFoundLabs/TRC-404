@@ -1,5 +1,4 @@
 #include "./utils/stdlib.fc";
-#include "./utils/string.fc";
 #include "./utils/chain.fc";
 #include "./utils/sendMessage.fc";
 #include "./message/common_message.fc";

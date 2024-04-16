@@ -7,7 +7,6 @@
 #include "./message/nftCollection_message.fc";
 #include "./init/wallet_init.fc";
 #include "./init/nftItem_init.fc";
-#include "./utils/string.fc";
 
 int min_unit()              asm "1000000000 PUSHINT"; ;; 1 FT
 int max_supply()            asm "1000000 PUSHINT";   
@@ -20,12 +19,12 @@ int deploy_nft_item_gas()   asm "43000000 PUSHINT";
   var (owner_address,next_item_index,collection_content,nft_item_code, royalty_params,jetton_wallet_code,total_supply) =
         (
          ds~load_msg_addr(), ;; owner_address 
-         ds~load_uint(64), ;; next_item_index ,
-         ds~load_ref(), ;; collection_content   
-         ds~load_ref(), ;; nft_item_code
-         ds~load_ref(),  ;; royalty_params  
-         ds~load_ref(),  ;; jetton_wallet_code
-         ds~load_uint(64) ;; total_supply,ie. current_supply
+         ds~load_uint(64),   ;; next_item_index ,
+         ds~load_ref(),      ;; collection_content   
+         ds~load_ref(),      ;; nft_item_code
+         ds~load_ref(),      ;; royalty_params  
+         ds~load_ref(),      ;; jetton_wallet_code
+         ds~load_uint(64)    ;; total_supply,ie. current_supply
         );
   if (ds.slice_bits() > 0) {    
       slice master_address = ds~load_msg_addr();
