@@ -4,6 +4,7 @@
 - **type**: Contract Interface
 - **authors**: [kojhliang](https://github.com/kojhliang), [howardpen9](https://github.com/howardpen9),[sidebyandrew](https://github.com/sidebyandrew)
 - **created**: 17.03.2024
+- **edited**: 16.04.2024
 - **replaces**: -
 - **replaced by**: -
 
@@ -51,6 +52,7 @@ For contract data storage, the content of the following three attributes must be
 `nft_collection_address` - address of the TRC404 NFT Collection contract address.
 `owned_nft_dict` - dictionary of the TRC404 NFT owned by user.
 `owned_nft_number` -  number of NFTs owned by user.
+`owned_nft_limit` -   max number of NFTs owned by user.
 
 Must implement:
 
@@ -91,7 +93,7 @@ transfer#0f8a7ea5 query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
 **Otherwise, should do:**
 
 1. Decrease TRC404 jetton amount on sender wallet by `amount` and Send `internal_transfer` to receiver TRC404 wallet (and optionally deploy it). About the TL-B schema of `internal_transfer` message,please reference the Jetton standard. 
-2. Calculate the number of nft that needs to be burned. If the number is more than zero, delete and select n(n>=1) nft item index(Might be the smallest,biggest one,etc.) from  `owned_nft_dict` ,then send n `reduce_one_nft` messages  to `nft_collection_address` .
+2. Calculate the number of nft that needs to be burned. If the number is more than zero,  select n(n>=1) nft item index(Might be the smallest,biggest one,etc.) from  `owned_nft_dict` and set status of nft item index to pending_delete, then send n `reduce_nft_supply` messages  to `nft_collection_address` .
 
   
 
@@ -126,8 +128,9 @@ internal_transfer#0x178d4519 query_id:uint64 amount:(VarUInteger 16) from:MsgAdd
 
 **Otherwise, should do:**
 
-1. Increase TRC404 jetton amount on receiver TRC404 wallet by `amount` .
-2. Calculate the number of nft that needs to be minted.If the number is more than zero, send n `add_nft_supply` messages  to `nft_collection_address`.
+1. Calculate the number of nft that needs to be minted,named `need_to_add_nft_number`.
+2. Increase TRC404 jetton amount on receiver TRC404 wallet by (`amount` - `need_to_add_nft_number`).
+3. If `need_to_add_nft_number`is more than zero, send n `add_nft_supply` messages  to `nft_collection_address`.
 
 
 ### Get-methods
@@ -137,10 +140,10 @@ Must implement `get_wallet_data()`  as Jetton standard described.
 ## TRC404 nft collection smart contract
 For contract data storage, the content of the following three attributes must be saved:
 
+`next_item_index` - next NFT item index
 `total_supply` - total supply of TRC404 NFT
 `trc404_wallet_code` - trc404 wallet code
 `trc404_master_address` -  trc404 master contract address
-`owned_nft_limit` -  the max number of NFTs owned by user
 
 Must implement:
 
@@ -153,18 +156,19 @@ Must implement:
 TL-B schema of inbound message:
 
 ```
-add_nft_supply#71d2a5a3 query_id:uint64 item_index:uint64 
+add_nft_supply#1aeb1fdb query_id:uint64 new_nft_number:uint64 
+                     nft_represent_ft_amount:(VarUInteger 16)
                      owner_address_of_sender_trc404_wallet:MsgAddress
-                     esponse_destination:MsgAddress
+                     response_destination:MsgAddress
                      = InternalMsgBody;
 ```
 
 
    `query_id` -  should be equal with request's `query_id`
 
-   `current_nft_balance` - should be equal with the current nft number owned by user.
-
    `new_nft_number` - should be equals with the number of nft that needs to be minted.
+
+   `nft_represent_ft_amount` - The number of FT represented by an NFT
 
    `owner_address_of_sender_trc404_wallet` - should be equal with owner address of this TRC404 wallet contract
 
@@ -176,25 +180,20 @@ add_nft_supply#71d2a5a3 query_id:uint64 item_index:uint64
 
 **Otherwise, should do:**
 
-1. According the `owned_nft_limit`,calculate the correct the nft number need to be minted. 
-   If `current_nft_balance` >= `owned_nft_limit`,`correct_new_nft_number` = 0  
-   If `current_nft_balance` < `owned_nft_limit`,`correct_new_nft_number` = `owned_nft_limit` - `current_nft_balance`
-   `correct_nft_number`
-2. Increase `total_supply`  on TRC404 nft collection contract by `correct_new_nft_number` .
-3. Send n  message to init and deploy n nft item contracts.
-4. Send notify message to receiver's TRC404 wallet to update `owned_nft_dict` and `owned_nft_number`.
+1. Increase `total_supply`  by `new_nft_number` .
+2. Increase `next_item_index`  by `new_nft_number` .
+3. Send n  message to init and deploy n NFT item contracts.
 
 
-
-#### 2. `reduce_one_nft`
+#### 2. `reduce_nft_supply`
 **Request**
   
 TL-B schema of inbound message:
 
 ```
-reduce_one_nft#40d7c55d query_id:uint64 item_index:uint64 
+reduce_nft_supply#45b21b1b query_id:uint64 item_index:uint64 
                      owner_address_of_sender_trc404_wallet:MsgAddress
-                     esponse_destination:MsgAddress
+                     response_destination:MsgAddress
                      = InternalMsgBody;
 ```
 
@@ -213,7 +212,7 @@ reduce_one_nft#40d7c55d query_id:uint64 item_index:uint64
 
 **Otherwise, should do:**
 
-1. Decrease `total_supply`  on TRC404 nft collection contract by one .
+1. Decrease `total_supply` by one .
 2. Send  message to nft item contract to burn this contract.
 
 
@@ -248,7 +247,6 @@ request_transfer_one_ft_and_nft#4476fc05 query_id:uint64 item_index:uint64
 **Otherwise, should do:**
 
 1. Send  message to sender's TRC404 wallet to decrease `owned_nft_number` by one and delete the nft_item_index from `owned_nft_dict`.
-2. Send  message to receiver's TRC404 wallet to increase `owned_nft_number` by one and add the nft_item_index into  `owned_nft_dict`.
 
 
 ### Get-methods
@@ -338,14 +336,17 @@ addr_var$11 anycast:(Maybe Anycast) addr_len:(## 9)
 _ _:MsgAddressInt = MsgAddress;
 _ _:MsgAddressExt = MsgAddress;
 
-add_nft_supply#71d2a5a3 query_id:uint64 item_index:uint64 
+
+
+add_nft_supply#1aeb1fdb query_id:uint64 new_nft_number:uint64 
+                     nft_represent_ft_amount:(VarUInteger 16)
                      owner_address_of_sender_trc404_wallet:MsgAddress
-                     esponse_destination:MsgAddress
+                     response_destination:MsgAddress
                      = InternalMsgBody;
 
-reduce_one_nft#40d7c55d query_id:uint64 item_index:uint64 
+reduce_nft_supply#45b21b1b query_id:uint64 item_index:uint64 
                      owner_address_of_sender_trc404_wallet:MsgAddress
-                     esponse_destination:MsgAddress
+                     response_destination:MsgAddress
                      = InternalMsgBody;
 
 
@@ -358,25 +359,25 @@ request_transfer_one_ft_and_nft#4476fc05 query_id:uint64 item_index:uint64
 
 ```
 
-Tags were calculated via tlbc as follows (request_flag is equal to `0x7fffffff` and response flag is equal to `0x80000000`):
+Tags were calculated via tlbc as follows (request flag is equal to `0x7fffffff` and response flag is equal to `0x80000000`):
 
-`crc32('add_nft_supply query_id:uint64 current_nft_balance:uint64 new_nft_number:uint64 owner_address_of_sender_trc404_wallet:MsgAddress response_destination:MsgAddress = InternalMsgBody') = 0xf1d2a5a3 & 0x7fffffff = 0x71d2a5a3`
+`crc32('add_nft_supply query_id:uint64 new_nft_number:uint64 nft_represent_ft_amount:(VarUInteger 16 owner_address_of_sender_trc404_wallet:MsgAddress response_destination:MsgAddress = InternalMsgBody') = 0x9aeb1fdb & 0x7fffffff = 0x1aeb1fdb`
 
-`crc32('educe_one_nft query_id:uint64 item_index:uint64 owner_address_of_sender_trc404_wallet:MsgAddress response_destination:MsgAddress = InternalMsgBody') = 0xc0d7c55d & 0x7fffffff = 0x40d7c55d`
+`crc32('reduce_nft_suplly query_id:uint64 item_index:uint64 owner_address_of_sender_trc404_wallet:MsgAddress response_destination:MsgAddress = InternalMsgBody') = 0xc5b21c1b & 0x7fffffff = 0x45b21b1b`
 
-`crc32('reduce_one_nft query_id:uint64 item_index:uint64 from:MsgAddress to:MsgAddress  response_destination:MsgAddress = InternalMsgBody') = 0xc476fc05 & 0x7fffffff = 0x4476fc05`
+`crc32('request_transfer_one_ft_and_nft query_id:uint64 item_index:uint64 from:MsgAddress to:MsgAddress  response_destination:MsgAddress = InternalMsgBody') = 0xc476fc05 & 0x7fffffff = 0x4476fc05`
 
 
 
 
 # Drawbacks
-Because TRC404 protocol might burn NFTs and mint NFTs when user transfer TRC404 jetton,the gas fee will higher than common Jetton transfer and NFT transfer.
+Because TRC404 protocol might burn NFTs and mint NFTs when user transfers TRC404 jetton,the gas fee will higher than common Jetton transfer and NFT transfer.
 
 
 # Rationale and alternatives
 
-## Why do we need to set owned_nft_number in nft collection contract?
-As mentioned in the drawbacks,if we don't set the owned_nft_number, it will cost an extremely high gas fee when we transfer a large number TRC404 jetton.After we set the owned_nft_number,let's say 5, the gas fee will not be more than 0.5 Ton no matter how much TRC404 jetton you transfer.
+## Why do we need to set owned_nft_number in TRC404 wallet contract?
+As mentioned in the drawbacks,if we don't set the owned_nft_number, it will cost an extremely high gas fee when we transfer a large number TRC404 jetton.After we set the owned_nft_number,let's say 5, the gas fee will not be more than 0.8 Ton no matter how much TRC404 jetton you transfer.
 
 # Prior art
 1. [Ethereum ERC404 Protocol implementation](https://github.com/Pandora-Labs-Org/erc404)

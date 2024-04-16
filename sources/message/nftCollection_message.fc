@@ -15,7 +15,7 @@ cell initCollectionMsg(int query_id,slice master_address,slice response_address 
                         .store_slice(response_address)
                         .end_cell();
 }
-int op::add_nft_supply() asm "0xdd9911fa PUSHINT";
+int op::add_nft_supply() asm "0x1aeb1fdb PUSHINT";
 
 (int,int,int,slice,slice ) load_AddNftSupplyMsg(slice in_msg_body){
     int query_id = in_msg_body~load_uint(64);
@@ -36,7 +36,8 @@ cell addNftSupplyMsg( int query_id,int new_nft_number,int nft_represent_ft_amoun
                             .end_cell();        
 }
 
-int op::reduce_nft_supply() asm "0x4bd28668 PUSHINT";
+
+int op::reduce_nft_supply() asm "0x45b21b1b PUSHINT";
 
 (int,int,slice,slice) load_ReduceNftSupplyMsg(slice in_msg_body){
     int query_id = in_msg_body~load_uint(64);
@@ -55,7 +56,7 @@ cell reduceNftSupplyMsg( int query_id,int burn_item_index,slice owner_address,sl
                             .end_cell();        
 }
 
-int op::request_transfer_one_ft_and_nft() asm "0xa243c000 PUSHINT";   
+int op::request_transfer_one_ft_and_nft() asm "0x4476fc05 PUSHINT";   
 
 cell requestTransferOneFtAndNftMsg(int query_id,int item_index,slice from_addess,slice to_address,slice response_address){
 
