@@ -10,7 +10,7 @@
 
 int min_tons_for_storage()                    asm "166000000 PUSHINT"; 
 int min_request_transfer_one_ft_and_nft_gas() asm "150000000 PUSHINT";  
-int deploy_gas_consumption()    asm "15800000 PUSHINT";   
+int deploy_gas_consumption()                  asm "15800000 PUSHINT";   
 
 
 (int, int, slice, slice, cell) load_data() {
@@ -68,7 +68,7 @@ int deploy_gas_consumption()    asm "15800000 PUSHINT";
       if ( ~ init? ) {  
        (int query_id,int nft_represent_ft_amount,slice new_owner_address,slice new_owner_trc404_wallet_address,slice response_address) = load_DeployNftItemMsg(in_msg_body);
 
-       throw_unless(405, equal_slices(collection_address, sender_address));
+       throw_unless(407, equal_slices(collection_address, sender_address));
 
        int level = rand(100);
        cell new_nft_content = begin_cell().store_uint(level,64).end_cell(); 
@@ -84,7 +84,7 @@ int deploy_gas_consumption()    asm "15800000 PUSHINT";
    if ( op == op::burn_nft_item()) {
       var (query_id,from,from_trc404_wallet, response_address) = load_BurnNftItemMsg(in_msg_body);
 
-      throw_unless(405, equal_slices(collection_address, sender_address));
+      throw_unless(406, equal_slices(collection_address, sender_address));
       sendMsg(bounce::false(),sendMode::CARRY_ALL_REMAINING_BALANCE() + sendMode::DESTROY_ACCOUNT_IF_ZERO(),from_trc404_wallet,0,cbBurnNftMsg(query_id, index, response_address)); 
       return();
    }

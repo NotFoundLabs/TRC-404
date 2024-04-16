@@ -9,7 +9,7 @@
 #include "./utils/const.fc";
 
 int max_supply()     asm "1000000000000000 PUSHINT"; ;;1 millon
-int notify_fee() asm    "1000000 PUSHINT"; 
+int notify_fee()     asm "1000000 PUSHINT"; 
 
 (int, slice,slice, cell, cell,cell,int) load_data() inline {
     slice ds = get_data().begin_parse();

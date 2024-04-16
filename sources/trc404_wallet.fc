@@ -248,7 +248,7 @@ global cell  Storage::Pending_transfer_nft_queue;
         if (add_number >= Storage::Pending_reduce_jetton_balance) {
             Storage::Jetton_balance = add_number - Storage::Pending_reduce_jetton_balance;
             Storage::Pending_reduce_jetton_balance = 0;
-            throw_unless(709, Storage::Jetton_balance >= 0);
+            throw_unless(710, Storage::Jetton_balance >= 0);
         }  else {
             Storage::Pending_reduce_jetton_balance = Storage::Pending_reduce_jetton_balance - add_number;
             Storage::Jetton_balance = 0;
@@ -264,7 +264,7 @@ global cell  Storage::Pending_transfer_nft_queue;
     if (op == op::reduce_one_ft_and_nft()) {
         var (query_id, item_index, to_address, reduce_and_add_amount, response_destination) = load_reduceOneFtAndNftMsg(in_msg_body);
 
-        throw_unless(712, equal_slices(Storage::Nft_collection_address, sender_address));
+        throw_unless(711, equal_slices(Storage::Nft_collection_address, sender_address));
 
         (slice value, int flag) = Storage::Owned_nft_dict.udict_get?(64, item_index);
 
@@ -288,8 +288,8 @@ global cell  Storage::Pending_transfer_nft_queue;
 
     if (op == op::change_owned_nft_limit()) {
         (int query_id, int new_owned_nft_limit) = load_ChangeOwnedNftLimitMsg(in_msg_body);
-        throw_unless(403, equal_slices(sender_address, Storage::Owner_address));
-        throw_unless(505, new_owned_nft_limit <= owned_nft_limit());
+        throw_unless(712, equal_slices(sender_address, Storage::Owner_address));
+        throw_unless(713, new_owned_nft_limit <= owned_nft_limit());
         Storage::Owned_nft_limit = new_owned_nft_limit;
         sendMsg(bounce::false(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(), sender_address, 0, excessesMsg(query_id));
         save_data();

@@ -9,11 +9,11 @@
 #include "./init/nftItem_init.fc";
 #include "./utils/string.fc";
 
-int min_unit()      asm "1000000000 PUSHINT"; ;; 1 FT
-int max_supply()    asm "1000000 PUSHINT";   
-int mint_nft_gas()       asm "13000000 PUSHINT";   
-int mint_nft_unit_gas()   asm "6100000 PUSHINT";   
-int deploy_nft_item_gas()             asm "43000000 PUSHINT"; 
+int min_unit()              asm "1000000000 PUSHINT"; ;; 1 FT
+int max_supply()            asm "1000000 PUSHINT";   
+int mint_nft_gas()          asm "13000000 PUSHINT";   
+int mint_nft_unit_gas()     asm "6100000 PUSHINT";   
+int deploy_nft_item_gas()   asm "43000000 PUSHINT"; 
 
 (int,slice,int, cell,cell, cell,cell,int,slice) load_data() inline {
   var ds = get_data().begin_parse();
@@ -78,7 +78,7 @@ int deploy_nft_item_gas()             asm "43000000 PUSHINT";
 
   if (op == op::change_royalty_params()) {
     var (query_id ,new_royalty_params) = load_ChangeRoyaltyParamsMsg(in_msg_body);
-    throw_unless(403, equal_slices(sender_address, owner_address));
+    throw_unless(601, equal_slices(sender_address, owner_address));
     sendMsg(bounce::false(),sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),sender_address,0,excessesMsg(1));
     save_data(owner_address,next_item_index, collection_content, nft_item_code,new_royalty_params, jetton_wallet_code,total_supply,master_address);
     return ();
@@ -86,10 +86,10 @@ int deploy_nft_item_gas()             asm "43000000 PUSHINT";
    
   if (op == op::add_nft_supply()) { 
     var (query_id,new_nft_number,nft_represent_ft_amount, owner_address_of_sender_trc404_wallet,response_address ) = load_AddNftSupplyMsg(in_msg_body); 
-    throw_unless(402, total_supply + new_nft_number <= max_supply() ); 
+    throw_unless(602, total_supply + new_nft_number <= max_supply() ); 
 
     var ( _, sender_trc404_wallet) = getJettonWallet_InitStateAndAddress(owner_address_of_sender_trc404_wallet,master_address,jetton_wallet_code,nft_item_code,my_address());
-    throw_unless(403, equal_slices(sender_address, sender_trc404_wallet));
+    throw_unless(603, equal_slices(sender_address, sender_trc404_wallet));
 
     int total_mint_nft_gas = mint_nft_gas() + (mint_nft_unit_gas() * (new_nft_number - 1)) ;
     int deploy_nft_item_gas = (msg_value - total_mint_nft_gas) / new_nft_number;
@@ -113,9 +113,9 @@ int deploy_nft_item_gas()             asm "43000000 PUSHINT";
   if (op == op::reduce_nft_supply()) { 
     var (query_id, burn_item_index, owner_address_of_sender_trc404_wallet,response_address) = load_ReduceNftSupplyMsg(in_msg_body);
     
-    throw_unless(402, (total_supply - 1) >= 0 ); 
+    throw_unless(604, (total_supply - 1) >= 0 ); 
     var ( _, sender_trc404_wallet) = getJettonWallet_InitStateAndAddress(owner_address_of_sender_trc404_wallet,master_address,jetton_wallet_code,nft_item_code,my_address());
-    throw_unless(403, equal_slices(sender_address, sender_trc404_wallet));
+    throw_unless(605, equal_slices(sender_address, sender_trc404_wallet));
 
     total_supply = total_supply - 1;
 
@@ -129,7 +129,7 @@ int deploy_nft_item_gas()             asm "43000000 PUSHINT";
     var (query_id, item_index, from_addess, to_address, response_address) = load_RequestTransferOneFtAndNftMsg(in_msg_body);
 
     var (_, nft_item_contract_address) = getNftItem_InitStateAndAddress(item_index,my_address(),nft_item_code);
-    throw_unless(403, equal_slices(sender_address, nft_item_contract_address));
+    throw_unless(606, equal_slices(sender_address, nft_item_contract_address));
 
     var (state_init,sender_trc404_wallet) = getJettonWallet_InitStateAndAddress(from_addess,master_address,jetton_wallet_code,nft_item_code,my_address());
     sendMsgWithInitState(bounce::true(),sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(),sender_trc404_wallet,0 ,reduceOneFtAndNftMsg(query_id,item_index,to_address,min_unit(),response_address),state_init);   
