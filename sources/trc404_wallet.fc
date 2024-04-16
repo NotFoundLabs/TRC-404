@@ -84,13 +84,11 @@ global cell  Storage::Pending_transfer_nft_queue;
     }
 
     ;;add the jetton balance that no need to mint NFT first
-    int need_to_add_nft_balance = 0;
     if (need_to_add_nft_number <= 0) {
         Storage::Jetton_balance = new_jetton_balance;
     } else {
-        int new_real_nft_balance = (old_nft_balance + need_to_add_nft_number) * min_unit();
-        need_to_add_nft_balance = new_real_nft_balance - old_jetton_balance;
-        Storage::Jetton_balance = new_jetton_balance - need_to_add_nft_balance;
+        ;;Notice:Jetton_balance amount might less than original jetton amount
+        Storage::Jetton_balance = new_jetton_balance - need_to_add_nft_number * min_unit(); 
     }
 
     throw_unless(710, Storage::Jetton_balance >= 0);
@@ -104,7 +102,7 @@ global cell  Storage::Pending_transfer_nft_queue;
     if (need_to_add_nft_number > 0) {
         int counter = 0;
         msg_value = msg_value - need_add_nft_supply_action_fee();
-        sendMsg(bounce::true(), sendMode::NONE(), Storage::Nft_collection_address, msg_value, addNftSupplyMsg(query_id, need_to_add_nft_number, need_to_add_nft_balance, Storage::Owner_address, response_address));
+        sendMsg(bounce::true(), sendMode::NONE(), Storage::Nft_collection_address, msg_value, addNftSupplyMsg(query_id, need_to_add_nft_number, min_unit(), Storage::Owner_address, response_address));
     } else {
         msg_value = msg_value - no_need_add_nft_supply_action_fee();
         sendMsg(bounce::false(), sendMode::NONE(), response_address, msg_value, excessesMsg(query_id));

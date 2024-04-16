@@ -86,7 +86,7 @@ int min_gas()       asm  "130000000 PUSHINT";
   }
    
   if (op == op::add_nft_supply()) { 
-    var (query_id,new_nft_number,need_to_add_nft_balance, owner_address_of_sender_trc404_wallet,response_address ) = load_AddNftSupplyMsg(in_msg_body); 
+    var (query_id,new_nft_number,nft_represent_ft_amount, owner_address_of_sender_trc404_wallet,response_address ) = load_AddNftSupplyMsg(in_msg_body); 
     throw_unless(402, total_supply + new_nft_number <= max_supply() ); 
 
     var ( _, sender_trc404_wallet) = getJettonWallet_InitStateAndAddress(owner_address_of_sender_trc404_wallet,master_address,jetton_wallet_code,nft_item_code,my_address());
@@ -99,13 +99,6 @@ int min_gas()       asm  "130000000 PUSHINT";
     repeat(new_nft_number){
             counter += 1;   
             int item_index = next_item_index + counter;
-
-            int nft_represent_ft_amount =  min_unit();
-            if (need_to_add_nft_balance < min_unit()){
-                 nft_represent_ft_amount = need_to_add_nft_balance;
-             } else {
-                 need_to_add_nft_balance = need_to_add_nft_balance - min_unit();
-             }
 
             var (state_init,nft_item_address) = getNftItem_InitStateAndAddress(item_index,my_address(),nft_item_code);
             sendMsgWithInitState(bounce::true(),sendMode::NONE(),nft_item_address,deploy_nft_item_gas,deployNftItemMsg(query_id,nft_represent_ft_amount,owner_address_of_sender_trc404_wallet,sender_trc404_wallet,response_address),state_init);  
