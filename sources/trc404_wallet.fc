@@ -111,18 +111,19 @@ global cell  Storage::Pending_transfer_nft_queue;
     save_data();
 }
 
-() updateOwnedNftNumberAndJettonBalance(int msg_value, int reduce_and_add_amount, slice to_address, int query_id, int item_index, slice response_address) impure inline_ref {
+() updateOwnedNftNumberAndJettonBalance(int msg_value, int nft_represent_ft_amount, slice to_address, int query_id, int item_index, slice response_address) impure inline_ref {
     Storage::Owned_nft_number = Storage::Owned_nft_number - 1;
     ;;try to reduce jetton_balance, if result is negative , add Pending_reduce_jetton_balance by 1 
-    int result = Storage::Jetton_balance - reduce_and_add_amount;
+    int result = Storage::Jetton_balance - nft_represent_ft_amount;
     if (result < 0) {
-        Storage::Pending_reduce_jetton_balance = Storage::Pending_reduce_jetton_balance + 1;
+        Storage::Pending_reduce_jetton_balance = Storage::Pending_reduce_jetton_balance + nft_represent_ft_amount;
+        Storage::Jetton_balance = 0;
     } else {
-        Storage::Jetton_balance = Storage::Jetton_balance - reduce_and_add_amount;
+        Storage::Jetton_balance = Storage::Jetton_balance - nft_represent_ft_amount;
     }
 
     var (state_init, receiver_trc404_wallet) = getJettonWallet_InitStateAndAddress(to_address, Storage::Jetton_master_address, Storage::Jetton_wallet_code, Storage::Nft_item_code, Storage::Nft_collection_address);
-    sendMsgWithInitState(bounce::true(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(), receiver_trc404_wallet, 0, addOneFtAndNftMsg(query_id, item_index, reduce_and_add_amount, Storage::Owner_address, response_address), state_init);
+    sendMsgWithInitState(bounce::true(), sendMode::CARRY_ALL_REMAINING_INCOMING_VALUE(), receiver_trc404_wallet, 0, addOneFtAndNftMsg(query_id, item_index, nft_represent_ft_amount, Storage::Owner_address, response_address), state_init);
     save_data();
 }
 
@@ -263,7 +264,7 @@ global cell  Storage::Pending_transfer_nft_queue;
     if (op == op::reduce_one_ft_and_nft()) {
         var (query_id, item_index, to_address, reduce_and_add_amount, response_destination) = load_reduceOneFtAndNftMsg(in_msg_body);
 
-        throw_unless(708, equal_slices(Storage::Nft_collection_address, sender_address));
+        throw_unless(712, equal_slices(Storage::Nft_collection_address, sender_address));
 
         (slice value, int flag) = Storage::Owned_nft_dict.udict_get?(64, item_index);
 
