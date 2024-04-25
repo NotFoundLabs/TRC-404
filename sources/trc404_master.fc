@@ -76,7 +76,12 @@ int notify_fee()     asm "1000000 PUSHINT";
   
 }
 
-(int,int, slice, cell,cell,cell,slice,int) get_jetton_data() method_id {
+(int,int, slice, cell,cell) get_jetton_data() method_id {
+    (int total_supply, slice admin_address,slice nft_collection_address, cell content, cell jetton_wallet_code,cell nft_item_code,int mintable) = load_data();
+    return (max_supply(),mintable, admin_address,content,jetton_wallet_code);
+}
+
+(int,int, slice, cell,cell,cell,slice,int) get_404_jetton_data() method_id {
     (int total_supply, slice admin_address,slice nft_collection_address, cell content, cell jetton_wallet_code,cell nft_item_code,int mintable) = load_data();
     return (max_supply(),mintable, admin_address,content,jetton_wallet_code,nft_item_code,nft_collection_address,total_supply);
 }

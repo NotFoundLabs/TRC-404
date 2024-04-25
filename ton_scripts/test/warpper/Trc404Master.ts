@@ -54,7 +54,7 @@ export class Trc404Master implements Contract {
 
     async getGetJettonData(provider: ContractProvider) {
         let builder = new TupleBuilder();
-        let source = (await provider.get('get_jetton_data', builder.build())).stack;
+        let source = (await provider.get('get_404_jetton_data', builder.build())).stack;
 
         let max_supply = source.readBigNumber();
         let mintable = source.readBoolean();

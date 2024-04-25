@@ -152,7 +152,7 @@ export class Trc404Wallet implements Contract {
 
     async getWalletData(provider: ContractProvider) {
         let builder = new TupleBuilder();
-        let source = (await provider.get('get_wallet_data', builder.build())).stack;
+        let source = (await provider.get('get_404_wallet_data', builder.build())).stack;
 
         let jetton_balance = source.readBigNumber();
         let owner_address = source.readAddress();

@@ -9,7 +9,7 @@
 #include "./init/nftItem_init.fc";
 
 
-int min_storageFee()                     asm "1000000 PUSHINT";
+int min_storageFee()                     asm "10000000 PUSHINT";   ;; 0.01 TON
 int min_unit()                           asm "1000000000 PUSHINT"; ;; 1 FT
 int basice_transfer_ft_gas_consumption() asm "18000000 PUSHINT";
 int transfer_one_ft_gas()                asm "5000000 PUSHINT";
@@ -66,7 +66,7 @@ global cell  Storage::Pending_transfer_nft_queue;
         .end_cell());
 }
 
-() core_internal_transfer(int msg_value, int query_id, int jetton_amount, slice from_address, slice response_address, int forward_ton_amount, slice forward_payload) impure inline_ref {
+() core_internal_transfer(int msg_value, int query_id, int jetton_amount, slice from_address, slice response_address, int forward_ton_amount, slice forward_payload,int my_balance,int fwd_fee) impure inline_ref {
     var old_jetton_balance = Storage::Jetton_balance;
     int old_nft_balance = old_jetton_balance / min_unit();
     int new_jetton_balance = Storage::Jetton_balance + jetton_amount;
@@ -90,8 +90,12 @@ global cell  Storage::Pending_transfer_nft_queue;
 
     throw_unless(710, Storage::Jetton_balance >= 0);
 
+    int ton_balance_before_msg = my_balance - msg_value;
+    int storage_fee = min_storageFee() - min(ton_balance_before_msg, min_storageFee());
+    msg_value -= storage_fee ;
+
     if (forward_ton_amount > 0) {
-        msg_value -= forward_ton_amount;
+        msg_value -= (forward_ton_amount + fwd_fee);
         sendMsg(bounce::false(), sendMode::PAY_GAS_SEPARATELY(), Storage::Owner_address, forward_ton_amount, transferNotificationMsg(query_id, jetton_amount, from_address, forward_payload));
     }
 
@@ -112,7 +116,7 @@ global cell  Storage::Pending_transfer_nft_queue;
     ;;try to reduce jetton_balance, if result is negative , add Pending_reduce_jetton_balance by nft_represent_ft_amount
     int result = Storage::Jetton_balance - nft_represent_ft_amount;
     if (result < 0) {
-        Storage::Pending_reduce_jetton_balance = Storage::Pending_reduce_jetton_balance + nft_represent_ft_amount;
+        Storage::Pending_reduce_jetton_balance = Storage::Pending_reduce_jetton_balance + abs(result);
         Storage::Jetton_balance = 0;
     } else {
         Storage::Jetton_balance = Storage::Jetton_balance - nft_represent_ft_amount;
@@ -123,6 +127,17 @@ global cell  Storage::Pending_transfer_nft_queue;
     save_data();
 }
 
+() on_bounce (slice in_msg_body) impure {
+  in_msg_body~skip_bits(32); ;; 0xFFFFFFFF
+  load_data();
+  int op = in_msg_body~load_uint(32);
+  throw_unless(709, op == op::internal_transfer());
+  int query_id = in_msg_body~load_uint(64);
+  int jetton_amount = in_msg_body~load_coins();
+  Storage::Jetton_balance += jetton_amount;
+  save_data();
+}
+
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) {
         ;; ignore empty messages
@@ -130,13 +145,14 @@ global cell  Storage::Pending_transfer_nft_queue;
     }
     var (flags, sender_address, fwd_fee) = load_in_msg_full(in_msg_full);
     if (flags & 1) {
+        on_bounce(in_msg_body);
         return ();
     }
     int op = in_msg_body~load_uint(32);
 
     ;;********begin to handle message
     load_data();
-    msg_value = msg_value - min_storageFee();
+    ;;msg_value = msg_value - min_storageFee();
 
     if (op == op::transfer()) {
         var (query_id, jetton_amount, to_address, response_address, custom_payload, forward_ton_amount, forward_payload) = load_transferMsg(in_msg_body);
@@ -201,7 +217,7 @@ global cell  Storage::Pending_transfer_nft_queue;
         throw_unless(707, equal_slices(Storage::Jetton_master_address, sender_address) | equal_slices(from_wallet_address, sender_address));
 
         msg_value = msg_value - receive_ft_gas_consumption();
-        core_internal_transfer(msg_value, query_id, jetton_amount, from_address, response_address, forward_ton_amount, forward_payload);
+        core_internal_transfer(msg_value, query_id, jetton_amount, from_address, response_address, forward_ton_amount, forward_payload,my_balance,fwd_fee);
         return ();
     }
 
@@ -295,7 +311,16 @@ global cell  Storage::Pending_transfer_nft_queue;
     throw(0xffff);
 }
 
-(int, slice, slice, cell, cell, slice, cell, int, int, int, cell) get_wallet_data() method_id {
+(int, slice, slice, cell) get_wallet_data() method_id {
+    slice ds = get_data().begin_parse();
+    return (ds~load_coins(),                       ;;jetton_balance
+            ds~load_msg_addr(),                    ;;owner_address
+            ds~load_msg_addr(),                    ;;jetton_master_address
+            ds~load_ref());                        ;;jetton_wallet_code
+    
+}
+
+(int, slice, slice, cell, cell, slice, cell, int, int, int, cell) get_404_wallet_data() method_id {
     slice ds = get_data().begin_parse();
     return (ds~load_coins(),                       ;;jetton_balance
             ds~load_msg_addr(),                    ;;owner_address

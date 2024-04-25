@@ -202,7 +202,7 @@ describe('Test Trc404 Wallet transferFT,include 4 branches ,and change owned_nft
     it('Test TransferFt Branch 4,should user1 transfer 1 FT to user2,user1 will  burn  1 NFT,user2 will  mint 1 NFT ', async () => {
         //begin: A: 1.5 FT ,1 NFT ;B: 3 FT ,3 NFT ;
         let transferAmount = 1;
-        let gasFee = 0.181; //0.19 ton  gas fee = 0.11 Ton  ~~ owned_nft_limit * 0.11 ; Notice: burn and mint 1 NFT ,needs at least 0.16 Ton
+        let gasFee = 0.204; //0.19 ton  gas fee = 0.11 Ton  ~~ owned_nft_limit * 0.11 ; Notice: burn and mint 1 NFT ,needs at least 0.16 Ton
         let msg = buildTransferFtMsg(transferAmount, user2.address, user1.address);
 
         const transferFtResult = await User1_Wallet.send(user1.getSender(), { value: toNano(gasFee) }, msg);
@@ -353,7 +353,7 @@ describe('Test Trc404 Wallet transferFT,transfer 1 FT,transfer 2 FT,transfer 3 F
 
 
         let transferAmount =1;
-        let gasFee = 0.181; //0.19 ton  gas fee = 0.11 Ton  ~~ owned_nft_limit * 0.11 ; Notice: burn and mint 1 NFT ,needs at least 0.16 Ton
+        let gasFee = 0.204; //0.19 ton  gas fee = 0.11 Ton  ~~ owned_nft_limit * 0.11 ; Notice: burn and mint 1 NFT ,needs at least 0.16 Ton
         let msg = buildTransferFtMsg(transferAmount,user2.address,user1.address) ;
 
         const transferFtResult = await User1_Wallet.send(user1.getSender(), { value: toNano(gasFee) },msg);  
@@ -371,7 +371,7 @@ describe('Test Trc404 Wallet transferFT,transfer 1 FT,transfer 2 FT,transfer 3 F
         let user2Id4ItemIndex =2n;  
         const nft_item4_adddress = await Collection.getGetNftAddressByIndex(user2Id4ItemIndex) as Address;
 
-
+        
         checkTransferFtBranch4TX(transferFtResult,User1_Wallet.address,User2_Wallet.address,
                                     Collection.address,nft_item2_adddress,nft_item4_adddress);
 
@@ -558,7 +558,7 @@ describe('Test Trc404 Wallet transferFT,transfer 1 FT,transfer 2 FT,transfer 3 F
     it('Test TransferFt 5 FT,user1 will  burn  5 NFT,user2 will  mint 5 NFT ', async () => {
         //current item_index=21
         let mintAmount =5;  
-        let gasFee1 =  0.15 * owned_nft_limit; //0.15 ton   gas_fee nees 0.15 ~  0.1 * owned_nft_limit/toNano("1") 
+        let gasFee1 =  0.16 * owned_nft_limit; //0.15 ton   gas_fee nees 0.15 ~  0.1 * owned_nft_limit/toNano("1") 
 
         let user1 = await blockchain.treasury("user11111");
         let user2 = await blockchain.treasury("user22222");
@@ -576,7 +576,7 @@ describe('Test Trc404 Wallet transferFT,transfer 1 FT,transfer 2 FT,transfer 3 F
 
 
         let transferAmount =5;
-        let gasFee = 0.181 * transferAmount; //0.19 ton  gas fee = 0.11 Ton  ~~ owned_nft_limit * 0.11 ; Notice: burn and mint 1 NFT ,needs at least 0.16 Ton
+        let gasFee = 0.19 * transferAmount; //0.19 ton  gas fee = 0.11 Ton  ~~ owned_nft_limit * 0.11 ; Notice: burn and mint 1 NFT ,needs at least 0.16 Ton
         let msg = buildTransferFtMsg(transferAmount,user2.address,user1.address) ;
 
         const transferFtResult = await User1_Wallet.send(user1.getSender(), { value: toNano(gasFee) },msg);  
