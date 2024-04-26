@@ -7,7 +7,7 @@
 #include "./init/wallet_init.fc";
 #include "./message/nftCollection_message.fc";
 
-int min_tons_for_storage()                    asm "166000000 PUSHINT"; 
+int min_tons_for_storage()                    asm "159000000 PUSHINT";  
 int min_request_transfer_one_ft_and_nft_gas() asm "150000000 PUSHINT";  
 int deploy_gas_consumption()                  asm "15800000 PUSHINT";   
 
