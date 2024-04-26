@@ -100,7 +100,6 @@ global cell  Storage::Pending_transfer_nft_queue;
     }
 
     if (need_to_add_nft_number > 0) {
-        int counter = 0;
         msg_value = msg_value - need_add_nft_supply_action_fee();
         sendMsg(bounce::true(), sendMode::NONE(), Storage::Nft_collection_address, msg_value, addNftSupplyMsg(query_id, need_to_add_nft_number, min_unit(), Storage::Owner_address, response_address));
     } else {
@@ -171,7 +170,7 @@ global cell  Storage::Pending_transfer_nft_queue;
             Storage::Owned_nft_number = new_nft_balance;
         }
 
-        int total_burn_nft_gas = (reduce_nft_supply_fee() + forward_ton_amount) * (need_to_burn_nft_number);
+        int total_burn_nft_gas = (reduce_nft_supply_fee() ) * (need_to_burn_nft_number);
         msg_value = msg_value - total_burn_nft_gas;
         throw_unless(37, msg_value > 0);
 
