@@ -68,7 +68,7 @@ int deploy_gas_consumption()                  asm "15800000 PUSHINT";
        (int query_id,int nft_represent_ft_amount,slice new_owner_address,slice new_owner_trc404_wallet_address,slice response_address) = load_DeployNftItemMsg(in_msg_body);
 
        throw_unless(407, equal_slices(collection_address, sender_address));
-
+       randomize_lt();
        int level = rand(100);
        cell new_nft_content = begin_cell().store_uint(level,64).end_cell(); 
 

@@ -147,6 +147,7 @@ global cell  Storage::Pending_transfer_nft_queue;
         on_bounce(in_msg_body);
         return ();
     }
+    fwd_fee = muldiv(fwd_fee, 3, 2); ;; we use message fwd_fee for estimation of forward_payload costs
     int op = in_msg_body~load_uint(32);
 
     ;;********begin to handle message
