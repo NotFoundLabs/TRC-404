@@ -3,7 +3,7 @@
     "description": "TRC-404 is an innovative, mixed Jetton & NFT implementation with native liquidity and fractionalization for semi-fungible tokens.",
     "image": "https://raw.githubusercontent.com/NotFoundLabs/TRC-404/main/logo-blue.png?raw=true",
     "cover_image": "https://raw.githubusercontent.com/NotFoundLabs/TRC-404/main/cover.png?raw=true",
-    "social_links": ["https://twitter.com/ton_trc404", "https://t.me/trc404chat", "https://t.me/trc404news", "https://trc-404.xyz"],
+    "social_links": ["https://twitter.com/ton_trc404", "https://t.me/trc404chat", "https://t.me/trc404news", "https://trc-404.xyz", "https://trc404.gitbook.io/trc404-doc"],
     "external_link": "https://t.me/trc404bot",
     "external_url": "https://trc-404.xyz"  
 }
