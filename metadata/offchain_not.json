@@ -1,0 +1,7 @@
+{
+   name: "NOT Token testnet",
+   description: "NOT Token testnet",
+   symbol: "tNOT",
+   decimals: "9",
+   image: ""
+}
