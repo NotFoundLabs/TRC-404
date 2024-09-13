@@ -1,0 +1,7 @@
+{
+   "name": "USDT Token testnet",
+   "description": "USDT Token testnet",
+   "symbol": "tUSDT",
+   "decimals": "9",
+   "image": "https://raw.githubusercontent.com/NotFoundLabs/TRC-404/main/metadata/usdt_logo.webp"
+}
