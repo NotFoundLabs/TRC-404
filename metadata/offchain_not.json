@@ -2,6 +2,5 @@
    "name": "NOT Token testnet",
    "description": "NOT Token testnet",
    "symbol": "tNOT",
-   "decimals": 9,
    "image": "https://raw.githubusercontent.com/NotFoundLabs/TRC-404/main/metadata/not_logo.webp"
 }
